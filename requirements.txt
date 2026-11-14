@@ -1,0 +1,32 @@
+# --- data pipeline ---
+numpy
+pandas
+pyarrow
+geopandas
+shapely
+pyproj
+rasterio
+rioxarray
+xarray
+netCDF4
+h5netcdf
+h5py
+scipy
+requests
+python-dotenv
+earthaccess
+pystac-client
+planetary-computer
+earthengine-api
+pyyaml
+pillow
+tqdm
+
+# --- backend ---
+fastapi
+uvicorn[standard]
+pydantic
+
+# --- tests ---
+pytest
+httpx

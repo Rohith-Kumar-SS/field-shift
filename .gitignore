@@ -1,0 +1,38 @@
+# --- secrets: never commit ---
+.env
+.env.*
+!.env.example
+*.netrc
+.netrc
+_netrc
+*token*
+*credentials*
+.urs_cookies
+.edl_token
+.earthdata*
+
+# --- data: raw cache is reproducible with `python tasks.py data` ---
+/data/raw
+/data/cache
+*.tmp
+
+# --- python ---
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+*.egg-info/
+
+# --- node ---
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+.vite/
+
+# --- os / editor ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
