@@ -1,0 +1,56 @@
+{
+  "source": "usgs_nwis",
+  "title": "USGS groundwater levels (depth to water)",
+  "tier": "OPTIONAL",
+  "status": "ok",
+  "fetched": "3,425 depth-to-water measurements at 310 wells within 0.12 degrees of the pilot box; 18 wells have 8+ years since 1990",
+  "resolution": "Point measurements at wells; typically one or two visits a year",
+  "date_range": "1948-06-15 to 2026-10-20",
+  "credit": "U.S. Geological Survey, National Water Information System (USGS Water Data for the Nation). Public domain.",
+  "access": "USGS Water Data API https://api.waterdata.usgs.gov/ogcapi/v0/collections/field-measurements",
+  "message": "310 wells, 3,425 measurements; of 18 wells with long records, 12 show the water table getting deeper since 1990; sanity passed",
+  "action_needed": "",
+  "sanity": {
+    "checks": [
+      {
+        "variable": "depth to water m",
+        "n": 3425,
+        "n_finite": 3425,
+        "all_nan": false,
+        "expected_range": [
+          -5,
+          250
+        ],
+        "min": 0.1219,
+        "max": 139.2936,
+        "mean": 22.1923,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "measurement year",
+        "n": 3425,
+        "n_finite": 3425,
+        "all_nan": false,
+        "expected_range": [
+          1900,
+          2026
+        ],
+        "min": 1948.0,
+        "max": 2026.0,
+        "mean": 1981.9766,
+        "in_range": true,
+        "passed": true
+      }
+    ],
+    "crs": "EPSG:4326",
+    "median_trend_m_per_decade": 0.34
+  },
+  "outputs": [
+    "groundwater_levels.parquet",
+    "groundwater_wells.geojson"
+  ],
+  "is_demo_data": false,
+  "notes": "Depth below land surface: a larger number means a deeper water table. Readings flagged as taken during or just after pumping are excluded from trends. A well a few kilometres from a field describes the aquifer, not that field's own well.",
+  "generated_at": "2026-11-14T08:50:56Z"
+}

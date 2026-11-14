@@ -1,0 +1,30 @@
+{
+  "source": "fields",
+  "title": "Pilot field boundaries (detected from Landsat)",
+  "tier": "MUST",
+  "status": "ok",
+  "fetched": "93 field-like irrigated shapes detected in the pilot box; 14 chosen as pilot fields ({\"long-stand alfalfa\": 8, \"alfalfa with breaks\": 4, \"mostly other crops\": 2})",
+  "resolution": "30 m (Landsat); each field is the largest circle inside its irrigated footprint",
+  "date_range": "summers 2023-2025 (clear scenes used per summer: {\"2023\": 23, \"2024\": 22, \"2025\": 20})",
+  "credit": "Derived by this project from Landsat 8/9 Collection 2 Level-2 (USGS/NASA) and the USDA NASS Cropland Data Layer.",
+  "access": "pipeline/s00_fields.py (see docstring for the method)",
+  "message": "14 pilot fields, 37-58 ha, median radius 403 m",
+  "action_needed": "",
+  "sanity": {
+    "crs": "EPSG:4326",
+    "n_candidates": 93,
+    "area_ha_range": [
+      36.8,
+      58.0
+    ],
+    "all_inside_pilot_box": true,
+    "passed": true
+  },
+  "outputs": [
+    "fields.geojson",
+    "fields_context.geojson"
+  ],
+  "is_demo_data": false,
+  "notes": "OpenET's /geodatabase/metadata/ids endpoint returned HTTP 400 'Invalid geometry' for every request, including the example in its own documentation, so OpenET's field boundaries could not be used. Boundaries here are satellite-derived approximations.",
+  "generated_at": "2026-11-14T08:42:53Z"
+}

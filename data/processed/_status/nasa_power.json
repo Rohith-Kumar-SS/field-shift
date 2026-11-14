@@ -1,0 +1,115 @@
+{
+  "source": "nasa_power",
+  "title": "NASA POWER daily agroclimatology",
+  "tier": "MUST",
+  "status": "ok",
+  "fetched": "1 grid cell(s), 12,784 daily rows, parameters: T2M, T2M_MAX, T2M_MIN, T2MDEW, RH2M, WS2M, ALLSKY_SFC_SW_DWN, PRECTOTCORR, GWETTOP, GWETROOT, PS",
+  "resolution": "0.5 x 0.625 degree (MERRA-2 meteorology), 1 x 1 degree (CERES solar); daily",
+  "date_range": "1991-01-01 to 2025-12-31",
+  "credit": "NASA Langley Research Center (LaRC) POWER Project, funded through the NASA Earth Science/Applied Science Program. Public domain.",
+  "access": "REST API https://power.larc.nasa.gov/api/temporal/daily/point (no key)",
+  "message": "12,784 daily rows for 1 cell(s); sanity passed",
+  "action_needed": "",
+  "sanity": {
+    "checks": [
+      {
+        "variable": "T2M_MAX degC",
+        "n": 12784,
+        "n_finite": 12784,
+        "all_nan": false,
+        "expected_range": [
+          -35,
+          50
+        ],
+        "min": -12.85,
+        "max": 38.59,
+        "mean": 16.0827,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "T2M_MIN degC",
+        "n": 12784,
+        "n_finite": 12784,
+        "all_nan": false,
+        "expected_range": [
+          -45,
+          35
+        ],
+        "min": -22.48,
+        "max": 22.01,
+        "mean": 2.2872,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "PRECTOTCORR mm/day",
+        "n": 12784,
+        "n_finite": 12784,
+        "all_nan": false,
+        "expected_range": [
+          0,
+          150
+        ],
+        "min": 0.0,
+        "max": 28.44,
+        "mean": 0.7164,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "ALLSKY_SFC_SW_DWN MJ/m2/day",
+        "n": 12784,
+        "n_finite": 12784,
+        "all_nan": false,
+        "expected_range": [
+          0,
+          40
+        ],
+        "min": 0.84,
+        "max": 35.1,
+        "mean": 17.9357,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "WS2M m/s",
+        "n": 12784,
+        "n_finite": 12784,
+        "all_nan": false,
+        "expected_range": [
+          0,
+          25
+        ],
+        "min": 0.51,
+        "max": 10.35,
+        "mean": 2.5366,
+        "in_range": true,
+        "passed": true
+      }
+    ],
+    "percent_missing": {
+      "T2M": 0.0,
+      "T2M_MAX": 0.0,
+      "T2M_MIN": 0.0,
+      "T2MDEW": 0.0,
+      "RH2M": 0.0,
+      "WS2M": 0.0,
+      "ALLSKY_SFC_SW_DWN": 0.0,
+      "PRECTOTCORR": 0.0,
+      "GWETTOP": 0.0,
+      "GWETROOT": 0.0,
+      "PS": 0.0
+    },
+    "grid_elevation_m": {
+      "P-116.250_+39.50": 2025.17
+    }
+  },
+  "outputs": [
+    "power_daily.parquet",
+    "power_cells.json"
+  ],
+  "is_demo_data": false,
+  "notes": "Gridded reanalysis, not an on-farm weather station. Temperatures are later adjusted from the grid-cell mean elevation to each field's elevation with a standard 6.5 degC/km lapse rate (documented in engine/agromet.py).",
+  "generated_at": "2026-11-14T08:44:35Z"
+}

@@ -1,0 +1,55 @@
+{
+  "source": "usda_cdl",
+  "title": "USDA NASS Cropland Data Layer (CDL)",
+  "tier": "MUST",
+  "status": "ok",
+  "fetched": "18 annual clips (2008-2025) for the pilot box; 252 field-year crop labels",
+  "resolution": "Source 30 m (10 m for 2024, 2025); clipped with nearest-neighbour sampling to a 30 m Web-Mercator grid; annual",
+  "date_range": "2008 to 2025",
+  "credit": "USDA National Agricultural Statistics Service Cropland Data Layer. Published crop-specific data layer, USDA-NASS, Washington, DC. Public domain.",
+  "access": "USDA CroplandCROS image service: https://pdi.scinet.usda.gov/image/rest/services/CDL_WM/ImageServer/exportImage (CropScape GetCDLFile kept as a fallback; it timed out when this pipeline was built)",
+  "message": "18 years fetched; sanity passed",
+  "action_needed": "",
+  "sanity": {
+    "checks": [
+      {
+        "variable": "dominant-class share of field",
+        "n": 252,
+        "n_finite": 252,
+        "all_nan": false,
+        "expected_range": [
+          0.2,
+          1.0
+        ],
+        "min": 0.415,
+        "max": 0.999,
+        "mean": 0.8527,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "CDL class code",
+        "n": 252,
+        "n_finite": 252,
+        "all_nan": false,
+        "expected_range": [
+          1,
+          254
+        ],
+        "min": 28.0,
+        "max": 195.0,
+        "mean": 105.6706,
+        "in_range": true,
+        "passed": true
+      }
+    ],
+    "crs": "EPSG:3857 (read from file)",
+    "mean_dominant_share": 0.853
+  },
+  "outputs": [
+    "field_cdl.parquet"
+  ],
+  "is_demo_data": false,
+  "notes": "A satellite-derived classification, not a ground record: individual field-years can be mislabelled (alfalfa vs other hay is a common confusion). The app shows the share of the field that carried the label and asks the farmer to correct it.",
+  "generated_at": "2026-11-14T08:45:14Z"
+}

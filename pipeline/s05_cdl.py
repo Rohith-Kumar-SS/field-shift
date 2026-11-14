@@ -1,4 +1,7 @@
-"""USDA NASS Cropland Data Layer via the CropScape web service (MUST tier). No key needed.
+"""USDA NASS Cropland Data Layer (MUST tier). No key needed.
+
+Primary route: USDA CroplandCROS image service (the successor to CropScape).
+Fallback: the CropScape GetCDLFile web service.
 
 Downloads one small clip per year for the pilot box, then computes the area share of
 each crop class inside every field. Output: data/processed/field_cdl.parquet
@@ -7,8 +10,8 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import rasterio
 import requests
@@ -19,6 +22,7 @@ from .common import (CDL_END, CDL_START, PILOT, PROCESSED, RAW, SourceError, loa
 from .zonal import coverage_weights, weighted_fractions
 
 SOURCE, TITLE, TIER = "usda_cdl", "USDA NASS Cropland Data Layer (CDL)", "MUST"
+CROS = "https://pdi.scinet.usda.gov/image/rest/services/CDL_WM/ImageServer"
 SERVICE = "https://nassgeodata.gmu.edu/axis2/services/CDLService/GetCDLFile"
 
 CDL_NAMES = {
@@ -56,42 +60,106 @@ def albers_bbox(bbox) -> tuple[float, float, float, float]:
     return min(xs), min(ys), max(xs), max(ys)
 
 
-def download_year(year: int, ab) -> "Path | None":
-    out = RAW / "cdl" / f"CDL_{year}_{PILOT['id']}.tif"
+def mercator_bbox(bbox) -> tuple[float, float, float, float]:
+    w, s, e, n = bbox
+    tr = Transformer.from_crs(4326, 3857, always_xy=True)
+    x0, y0 = tr.transform(w, s)
+    x1, y1 = tr.transform(e, n)
+    return x0, y0, x1, y1
+
+
+def cros_catalog() -> dict[int, dict]:
+    """Year -> {objectid, native pixel size} from the CroplandCROS mosaic catalogue."""
+    r = requests.get(CROS + "/query", params={"where": "1=1", "outFields": "OBJECTID,Name,Year,LowPS",
+                                              "returnGeometry": "false", "f": "json"}, timeout=120)
+    r.raise_for_status()
+    out: dict[int, dict] = {}
+    for f in r.json().get("features", []):
+        a = f["attributes"]
+        year, ps = int(a["Year"]), float(a["LowPS"])
+        if year not in out or ps < out[year]["native_m"]:
+            out[year] = {"objectid": a["OBJECTID"], "native_m": ps, "name": a["Name"]}
+    return out
+
+
+def download_year_cros(year: int, entry: dict) -> Path:
+    """Clip one CDL year from USDA CroplandCROS (ArcGIS ImageServer), nearest-neighbour."""
+    out = RAW / "cdl" / f"CDL_{year}_{PILOT['id']}_cros.tif"
     out.parent.mkdir(parents=True, exist_ok=True)
     if out.exists() and out.stat().st_size > 1000:
         return out
-    params = {"year": year, "bbox": ",".join(f"{v:.0f}" for v in ab)}
-    r = requests.get(SERVICE, params=params, timeout=180)
+    x0, y0, x1, y1 = mercator_bbox(PILOT["bbox"])
+    px = 30.0  # Web-Mercator metres (~23 m on the ground at 39.7 N): never coarser than the 30 m source
+    width, height = int(round((x1 - x0) / px)), int(round((y1 - y0) / px))
+    params = {
+        "bbox": f"{x0},{y0},{x1},{y1}", "bboxSR": 3857, "imageSR": 3857, "size": f"{width},{height}",
+        "format": "tiff", "pixelType": "U8", "interpolation": "RSP_NearestNeighbor",
+        "mosaicRule": json.dumps({"mosaicMethod": "esriMosaicLockRaster",
+                                  "lockRasterIds": [entry["objectid"]]}),
+        "f": "image",
+    }
+    r = requests.get(CROS + "/exportImage", params=params, timeout=300)
+    if r.status_code != 200 or "tiff" not in r.headers.get("content-type", ""):
+        raise SourceError(f"CroplandCROS export failed for {year}: HTTP {r.status_code} {r.text[:120]}")
+    out.write_bytes(r.content)
+    return out
+
+
+def download_year_cropscape(year: int) -> "Path | None":
+    """Fallback: the older CropScape clip service (native EPSG:5070 grid)."""
+    out = RAW / "cdl" / f"CDL_{year}_{PILOT['id']}_cropscape.tif"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    if out.exists() and out.stat().st_size > 1000:
+        return out
+    ab = albers_bbox(PILOT["bbox"])
+    r = requests.get(SERVICE, params={"year": year, "bbox": ",".join(f"{v:.0f}" for v in ab)}, timeout=90)
     if r.status_code != 200:
-        raise SourceError(f"CropScape HTTP {r.status_code} for {year}: {r.text[:160]}")
+        raise SourceError(f"CropScape HTTP {r.status_code} for {year}")
     m = re.search(r"<returnURL>(.*?)</returnURL>", r.text)
     if not m:
-        return None  # year not published for this area
+        return None
     tif = requests.get(m.group(1), timeout=300)
     tif.raise_for_status()
     out.write_bytes(tif.content)
     return out
 
 
-def main() -> None:
-    fields = load_fields()
-    ab = albers_bbox(PILOT["bbox"])
-    rows, years_ok, years_missing, res = [], [], [], {}
+def download_all() -> tuple[dict[int, Path], list[str], dict[int, float], str]:
+    """Fetch every year. Returns (year -> file, missing notes, native pixel size, route used)."""
+    paths: dict[int, Path] = {}
+    missing: list[str] = []
+    native: dict[int, float] = {}
+    route = "USDA CroplandCROS image service"
+    try:
+        catalog = cros_catalog()
+    except Exception as exc:  # noqa: BLE001
+        catalog = {}
+        route = f"CropScape (CroplandCROS catalogue unavailable: {type(exc).__name__})"
     for year in range(CDL_START, CDL_END + 1):
         try:
-            path = download_year(year, ab)
+            if year in catalog:
+                paths[year] = download_year_cros(year, catalog[year])
+                native[year] = catalog[year]["native_m"]
+            else:
+                p = download_year_cropscape(year)
+                if p is None:
+                    missing.append(f"{year} (not published)")
+                else:
+                    paths[year] = p
+                    native[year] = 30.0
         except (requests.RequestException, SourceError) as exc:
-            years_missing.append(f"{year} ({type(exc).__name__})")
-            continue
-        if path is None:
-            years_missing.append(f"{year} (not published)")
-            continue
+            missing.append(f"{year} ({type(exc).__name__})")
+    return paths, missing, native, route
+
+
+def field_fractions(fields, paths: dict[int, Path]) -> pd.DataFrame:
+    """Area share of each CDL class inside each field, for every year."""
+    rows = []
+    for year, path in sorted(paths.items()):
         with rasterio.open(path) as src:
             data = src.read(1)
-            res[year] = round(abs(src.transform.a), 1)
-            f5070 = fields.to_crs(src.crs)
-            for _, f in f5070.iterrows():
+            fproj = fields.to_crs(src.crs)
+            for _, f in fproj.iterrows():
                 w = coverage_weights(f.geometry, src.transform, data.shape, supersample=3)
                 fr = weighted_fractions(data, w)
                 if not fr:
@@ -106,33 +174,44 @@ def main() -> None:
                         {"code": int(c), "name": CDL_NAMES.get(int(c), f"Class {c}"),
                          "share": round(float(s), 3)} for c, s in top[:4]]),
                 })
-        years_ok.append(year)
-    if not rows:
+    return pd.DataFrame(rows)
+
+
+def main() -> None:
+    fields = load_fields()
+    paths, years_missing, native, route = download_all()
+    if not paths:
         raise SourceError(
-            "CropScape returned no CDL rasters for the pilot box",
-            action="CropScape (nassgeodata.gmu.edu) may be down; re-run `python -m pipeline.s05_cdl` "
-                   "later. Raw files are cached, so only missing years are retried.")
-    df = pd.DataFrame(rows)
+            "No CDL rasters could be fetched for the pilot box",
+            action="USDA CroplandCROS (pdi.scinet.usda.gov) and CropScape (nassgeodata.gmu.edu) were "
+                   "both unreachable; re-run `python -m pipeline.s05_cdl` later. Files already "
+                   "downloaded are cached, so only missing years are retried.")
+    df = field_fractions(fields, paths)
     df.to_parquet(PROCESSED / "field_cdl.parquet", index=False)
+    years_ok = sorted(paths)
+    with rasterio.open(paths[years_ok[-1]]) as src:
+        crs_txt = str(src.crs)
 
     checks = [sanity_range(df["share"], 0.2, 1.0, "dominant-class share of field"),
               sanity_range(df["cdl_code"], 1, 254, "CDL class code")]
     complete = len(years_ok) == (CDL_END - CDL_START + 1)
     ok = all(c["passed"] for c in checks)
+    fine = ", ".join(str(y) for y, r in sorted(native.items()) if r < 30)
     write_status(
         SOURCE, status="ok" if (ok and complete) else "partial", title=TITLE, tier=TIER,
         fetched=f"{len(years_ok)} annual clips ({min(years_ok)}-{max(years_ok)}) for the pilot box; "
                 f"{len(df)} field-year crop labels",
-        resolution="30 m (10 m from 2024); annual. Pixel sizes read from the files: "
-                   + ", ".join(f"{y}: {r} m" for y, r in sorted(res.items()) if y in (min(res), max(res))),
+        resolution=f"Source 30 m ({'10 m for ' + fine if fine else 'all years'}); clipped with "
+                   "nearest-neighbour sampling to a 30 m Web-Mercator grid; annual",
         date_range=f"{min(years_ok)} to {max(years_ok)}",
         credit="USDA National Agricultural Statistics Service Cropland Data Layer. Published "
                "crop-specific data layer, USDA-NASS, Washington, DC. Public domain.",
-        access="CropScape web service https://nassgeodata.gmu.edu/axis2/services/CDLService/GetCDLFile",
+        access=f"{route}: {CROS}/exportImage (CropScape GetCDLFile kept as a fallback; it timed "
+               "out when this pipeline was built)",
         message=f"{len(years_ok)} years fetched"
                 + (f"; missing: {', '.join(years_missing)}" if years_missing else "")
                 + f"; sanity {'passed' if ok else 'CHECK'}",
-        sanity={"checks": checks, "crs": "EPSG:5070 (read from file)",
+        sanity={"checks": checks, "crs": f"{crs_txt} (read from file)",
                 "mean_dominant_share": round(float(df["share"].mean()), 3)},
         outputs=["field_cdl.parquet"],
         notes="A satellite-derived classification, not a ground record: individual field-years "

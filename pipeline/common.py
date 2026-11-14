@@ -31,9 +31,10 @@ load_dotenv(ROOT / ".env")
 PILOT = {
     "id": "diamond_valley_nv",
     "name": "Diamond Valley, Eureka County, Nevada",
-    # west, south, east, north (WGS84). Covers the irrigated southern valley floor.
-    "bbox": [-116.08, 39.58, -115.88, 39.80],
-    "centroid": [-115.98, 39.69],
+    # west, south, east, north (WGS84). Core of the irrigated valley floor; kept under
+    # 50,000 acres so one OpenET field-boundary query covers it.
+    "bbox": [-116.08, 39.62, -115.95, 39.75],
+    "centroid": [-116.015, 39.685],
     "utm_epsg": 32611,  # UTM zone 11N
     "timezone": "America/Los_Angeles",
 }

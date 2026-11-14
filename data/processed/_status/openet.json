@@ -1,0 +1,71 @@
+{
+  "source": "openet",
+  "title": "OpenET ensemble evapotranspiration (field scale)",
+  "tier": "STRONG",
+  "status": "ok",
+  "fetched": "monthly ensemble ET, ensemble minimum and maximum for 14 fields; gridMET reference ET and precipitation at the pilot centre. Quota now: 44 used of 100",
+  "resolution": "30 m (Landsat thermal driven), aggregated to the field polygon; monthly",
+  "date_range": "2016-01 to 2025-12",
+  "credit": "OpenET (Melton et al. 2022, JAWRA). Ensemble of ALEXI/DisALEXI, eeMETRIC, geeSEBAL, PT-JPL, SIMS and SSEBop, built on Landsat and gridMET. CC BY 4.0.",
+  "access": "OpenET API https://openet-api.org/raster/timeseries/polygon and /point",
+  "message": "1,680 field-months for 14 fields; May-Sep model spread (max - min) is a median 35 % of ET; 34 repeated-value months flagged; sanity passed",
+  "action_needed": "",
+  "sanity": {
+    "checks": [
+      {
+        "variable": "monthly ET mm",
+        "n": 1680,
+        "n_finite": 1680,
+        "all_nan": false,
+        "expected_range": [
+          0,
+          320
+        ],
+        "min": 1.175,
+        "max": 201.772,
+        "mean": 64.6677,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "annual ET mm (idle pivots can be very low)",
+        "n": 140,
+        "n_finite": 140,
+        "all_nan": false,
+        "expected_range": [
+          50,
+          1500
+        ],
+        "min": 130.03,
+        "max": 1063.425,
+        "mean": 776.0123,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "monthly gridMET reference ET mm",
+        "n": 120,
+        "n_finite": 120,
+        "all_nan": false,
+        "expected_range": [
+          5,
+          330
+        ],
+        "min": 17.956,
+        "max": 211.77,
+        "mean": 102.4745,
+        "in_range": true,
+        "passed": true
+      }
+    ],
+    "median_growing_season_model_spread_fraction": 0.353,
+    "repeated_value_months": 34
+  },
+  "outputs": [
+    "openet_field_monthly.parquet",
+    "openet_valley_monthly.parquet"
+  ],
+  "is_demo_data": false,
+  "notes": "A model estimate of water actually evaporated and transpired, not a flow-meter reading. The newest six months can still be revised. Winter values are the least reliable (snow, few clear images) and some are repeated across months; those are flagged and left out of seasonal statistics. The field-boundary and field-ID endpoints (/geodatabase/...) returned HTTP 400 for every request, so polygons detected by this project are sent to the raster endpoint instead.",
+  "generated_at": "2026-11-14T08:55:45Z"
+}

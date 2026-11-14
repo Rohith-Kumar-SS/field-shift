@@ -1,0 +1,116 @@
+{
+  "source": "ssurgo",
+  "title": "USDA NRCS SSURGO soils (Soil Data Access)",
+  "tier": "MUST",
+  "status": "ok",
+  "fetched": "30 map units (50 components, 141 horizons) in the pilot box; soil survey area(s): NV621 - Diamond Valley Area, Nevada, Parts of Elko, Eureka and White Pine Counties",
+  "resolution": "Vector map units, nominal survey scale 1:24,000 (Order 2-3)",
+  "date_range": "Current published SSURGO snapshot (static)",
+  "credit": "Soil Survey Staff, USDA Natural Resources Conservation Service. Soil Survey Geographic (SSURGO) Database. Public domain.",
+  "access": "Soil Data Access web service https://sdmdataaccess.sc.egov.usda.gov/Tabular/post.rest",
+  "message": "30 map units; soil table for 14/14 fields; sanity passed",
+  "action_needed": "",
+  "sanity": {
+    "checks": [
+      {
+        "variable": "organic matter % (0-30 cm)",
+        "n": 14,
+        "n_finite": 14,
+        "all_nan": false,
+        "expected_range": [
+          0,
+          20
+        ],
+        "min": 0.4811,
+        "max": 1.5,
+        "mean": 1.117,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "clay % (0-30 cm)",
+        "n": 14,
+        "n_finite": 14,
+        "all_nan": false,
+        "expected_range": [
+          0,
+          70
+        ],
+        "min": 4.3642,
+        "max": 16.4378,
+        "mean": 10.9131,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "pH (0-30 cm)",
+        "n": 14,
+        "n_finite": 14,
+        "all_nan": false,
+        "expected_range": [
+          4,
+          10.5
+        ],
+        "min": 6.8142,
+        "max": 9.3272,
+        "mean": 7.757,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "K factor (whole soil)",
+        "n": 14,
+        "n_finite": 14,
+        "all_nan": false,
+        "expected_range": [
+          0.02,
+          0.69
+        ],
+        "min": 0.15,
+        "max": 0.3646,
+        "mean": 0.2781,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "available water storage 0-100 cm (cm)",
+        "n": 14,
+        "n_finite": 14,
+        "all_nan": false,
+        "expected_range": [
+          0,
+          40
+        ],
+        "min": 9.3205,
+        "max": 12.675,
+        "mean": 11.0908,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "share of field with soil data",
+        "n": 14,
+        "n_finite": 14,
+        "all_nan": false,
+        "expected_range": [
+          0.9,
+          1.01
+        ],
+        "min": 1.0,
+        "max": 1.0,
+        "mean": 1.0,
+        "in_range": true,
+        "passed": true
+      }
+    ],
+    "crs": "EPSG:4326"
+  },
+  "outputs": [
+    "soil_mapunits.geojson",
+    "soil_mapunit_props.parquet",
+    "field_soil.parquet"
+  ],
+  "is_demo_data": false,
+  "notes": "Map units are polygons with representative values, not measurements of every square metre. Values are component-percent weighted (0-30 cm, thickness weighted) and then area weighted over the field.",
+  "generated_at": "2026-11-14T08:45:02Z"
+}
