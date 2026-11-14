@@ -1,0 +1,73 @@
+{
+  "source": "smap",
+  "title": "SMAP enhanced L3 soil moisture (SPL3SMP_E, 9 km)",
+  "tier": "MUST",
+  "status": "ok",
+  "fetched": "version 006: 2,857 days with retrievals, 6 cells of 9 km over the valley, morning + evening overpasses",
+  "resolution": "9 km EASE-Grid 2.0 (interpolated from ~33 km radiometer footprints); a retrieval every 2-3 days",
+  "date_range": "2015-04-01 to 2025-12-31",
+  "credit": "O'Neill, P. E. et al. SMAP Enhanced L3 Radiometer Global and Polar Grid Daily 9 km EASE-Grid Soil Moisture. NASA National Snow and Ice Data Center DAAC, Boulder, Colorado.",
+  "access": "NASA cloud OPeNDAP (opendap.earthdata.nasa.gov), spatial subset per daily file, Earthdata bearer token",
+  "message": "2,857 retrieval days, 747 cell-months; 0 daily files failed; sanity passed",
+  "action_needed": "",
+  "sanity": {
+    "checks": [
+      {
+        "variable": "soil moisture m3/m3",
+        "n": 16544,
+        "n_finite": 16544,
+        "all_nan": false,
+        "expected_range": [
+          0.0,
+          0.6
+        ],
+        "min": 0.02,
+        "max": 0.3372,
+        "mean": 0.1052,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "monthly anomaly z-score",
+        "n": 717,
+        "n_finite": 717,
+        "all_nan": false,
+        "expected_range": [
+          -5,
+          5
+        ],
+        "min": -1.9934,
+        "max": 2.4773,
+        "mean": 0.0,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "retrieval days per month",
+        "n": 747,
+        "n_finite": 747,
+        "all_nan": false,
+        "expected_range": [
+          1,
+          31
+        ],
+        "min": 1.0,
+        "max": 31.0,
+        "mean": 22.1473,
+        "in_range": true,
+        "passed": true
+      }
+    ],
+    "grid": "EASE-Grid 2.0 (EPSG:6933)",
+    "share_recommended_quality": 0.8,
+    "failed_days": []
+  },
+  "outputs": [
+    "smap_cell_monthly.parquet",
+    "smap_cells.geojson",
+    "field_smap_cell.json"
+  ],
+  "is_demo_data": false,
+  "notes": "Top ~5 cm of soil only, and each 9 km cell is mostly desert shrubland with the irrigated pivots mixed in: it shows whether the valley is wetter or drier than usual, not the moisture under one pivot. Anomaly z = (month mean - that calendar month's 2015-2025 mean) / standard deviation; months with under 5 retrieval days are left blank.",
+  "generated_at": "2026-11-14T08:56:17Z"
+}

@@ -1,0 +1,26 @@
+{
+  "source": "indicators",
+  "title": "Field x month harmonisation and indicators",
+  "tier": "MUST",
+  "status": "ok",
+  "fetched": "14 fields x every source -> context, evidence and summary JSON",
+  "resolution": "field polygon x month (plus annual and growing-season summaries)",
+  "date_range": "see individual sources",
+  "credit": "Derived by this project.",
+  "access": "pipeline/s20_indicators.py + engine/context.py",
+  "message": "14 fields harmonised; default-priority scoring ran for all; sources not available: imerg, modis",
+  "action_needed": "",
+  "sanity": {
+    "all_scores_within_0_1": true,
+    "passed": true
+  },
+  "outputs": [
+    "field_context/*.json",
+    "field_evidence/*.json",
+    "fields_summary.json",
+    "valley.json"
+  ],
+  "is_demo_data": false,
+  "notes": "",
+  "generated_at": "2026-11-14T09:18:59Z"
+}

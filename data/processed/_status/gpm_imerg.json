@@ -1,0 +1,18 @@
+{
+  "source": "gpm_imerg",
+  "title": "GPM IMERG Final Run daily precipitation (GPM_3IMERGDF v07)",
+  "tier": "MUST",
+  "status": "failed",
+  "fetched": "",
+  "resolution": "",
+  "date_range": "",
+  "credit": "",
+  "access": "",
+  "message": "GES DISC refused the download: HTTP 403 (EULA Acceptance Failure)",
+  "action_needed": "Sign in at https://urs.earthdata.nasa.gov with the account that issued EARTHDATA_TOKEN, then open https://urs.earthdata.nasa.gov/approve_app?client_id=e2WVk8Pw6weeLUKZYOxvTQ and approve 'NASA GESDISC DATA ARCHIVE' (Applications > Authorized Apps > Approve More Applications). No new token is needed. Then run `python -m pipeline.s02_imerg` and `python -m pipeline.s20_indicators`.",
+  "sanity": {},
+  "outputs": [],
+  "is_demo_data": false,
+  "notes": "",
+  "generated_at": "2026-11-14T08:56:25Z"
+}

@@ -182,7 +182,7 @@ def monthly_zscore(values, months, min_years: int = 4):
         if sel.sum() < min_years:
             continue
         mu, sd = v[sel].mean(), v[sel].std(ddof=1)
-        if sd > 0:
+        if sd > 1e-9:       # a month that never varies has no meaningful anomaly
             out[sel] = (v[sel] - mu) / sd
     return out
 

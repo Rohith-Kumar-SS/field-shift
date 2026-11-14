@@ -1,0 +1,89 @@
+{
+  "source": "gridmet",
+  "title": "gridMET daily temperature and precipitation (4 km)",
+  "tier": "OPTIONAL",
+  "status": "ok",
+  "fetched": "daily Tmax, Tmin and precipitation for 7 cells of 4 km under the pilot fields",
+  "resolution": "1/24 degree (~4 km); daily",
+  "date_range": "1991-01-01 to 2025-12-31",
+  "credit": "Abatzoglou, J. T. (2013). Development of gridded surface meteorological data for ecological applications and modelling. Int. J. Climatol. 33: 121-131. Public domain (CC0).",
+  "access": "OPeNDAP, University of Idaho / Northwest Knowledge Network THREDDS (thredds.northwestknowledge.net)",
+  "message": "7 cells; NASA POWER nights are 4.8 degC too warm for the valley floor: frost-free season 134 days raw -> 81 corrected (gridMET itself: 84); annual rain 262 mm -> 229 mm; sanity passed",
+  "action_needed": "",
+  "sanity": {
+    "checks": [
+      {
+        "variable": "tmax degC",
+        "n": 89488,
+        "n_finite": 89488,
+        "all_nan": false,
+        "expected_range": [
+          -30,
+          48
+        ],
+        "min": -13.95,
+        "max": 38.85,
+        "mean": 17.0207,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "tmin degC",
+        "n": 89488,
+        "n_finite": 89488,
+        "all_nan": false,
+        "expected_range": [
+          -45,
+          30
+        ],
+        "min": -34.65,
+        "max": 18.05,
+        "mean": -2.197,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "daily precipitation mm",
+        "n": 89488,
+        "n_finite": 89488,
+        "all_nan": false,
+        "expected_range": [
+          0,
+          120
+        ],
+        "min": 0.0,
+        "max": 33.5,
+        "mean": 0.6163,
+        "in_range": true,
+        "passed": true
+      }
+    ],
+    "example_field_check": {
+      "frost_free_days_power_raw": 134.0,
+      "frost_free_days_power_corrected": 81.0,
+      "frost_free_days_gridmet": 83.5,
+      "annual_precip_power_mm": 262,
+      "annual_precip_gridmet_mm": 229,
+      "mean_tmin_delta_c": -4.78,
+      "mean_tmax_delta_c": 0.88,
+      "power_grid_elevation_m": 2025.17,
+      "days_over_32_power_corrected": {
+        "mean_days": 30.5,
+        "per_decade": 8.4,
+        "p_value": 0.0004
+      },
+      "days_over_32_gridmet": {
+        "mean_days": 27.7,
+        "per_decade": 6.1905,
+        "p_value": 0.0031
+      }
+    }
+  },
+  "outputs": [
+    "gridmet_daily.parquet",
+    "power_bias.json"
+  ],
+  "is_demo_data": false,
+  "notes": "Used only to bias-correct NASA POWER (monthly delta method). Still a 4 km grid: the coldest hollows frost earlier and later than it shows.",
+  "generated_at": "2026-11-14T09:16:12Z"
+}
