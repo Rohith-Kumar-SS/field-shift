@@ -137,12 +137,11 @@ reality differed, and what was done instead.
 | Field boundaries from OpenET | `/geodatabase/metadata/ids` returned HTTP 400 "Invalid geometry" for every request, including the example in OpenET's own documentation | Boundaries are detected from Landsat: the largest circle inside each irrigated footprint on a peak-summer NDVI composite (93 pivots found, 14 chosen for variety of crop history and spread) |
 | Pilot box 0.20 x 0.22 degrees | Larger than OpenET's 50,000-acre limit and wider than needed | Tightened to the irrigated core: [-116.08, 39.62, -115.95, 39.75] |
 | CDL from CropScape | The CropScape service timed out | USDA CroplandCROS image service (the successor), 2008-2025; CropScape kept as a fallback |
-| IMERG and SMAP by OPeNDAP subset | SMAP worked. GES DISC refused IMERG: the token's account has not accepted the data-use agreement | SMAP loaded. IMERG is recorded as failed with the exact step; rainfall comes from NASA POWER corrected to gridMET and is labelled so. No data was invented |
+| IMERG and SMAP by OPeNDAP subset | SMAP worked. GES DISC first refused IMERG: the token's account had not accepted the data-use agreement | SMAP loaded straight away. IMERG was recorded as failed with the exact step, and no data was invented. On 15 Nov 2026 a token from an approved account was installed and IMERG loaded through the same OPeNDAP route (9,039 days, 2001 to Sep 2025). It is scaled month by month to gridMET, and rain-based trends use the IMERG years only |
 | NASA POWER moved to field elevation with a lapse rate | That gave a 134-day frost-free season, which is wrong for a valley floor where cold air pools | Added gridMET (4 km, station-informed) and a month-by-month bias correction of NASA POWER; the frost-free season becomes 81-93 days |
 | Landsat via Earth Engine or Planetary Computer | Earth Engine was not authenticated | Planetary Computer; Earth Engine is not needed |
 | Water score = 1 - irrigation / reference ET | Compressed the differences so much that the thirstiest rotation could still win with water weighted at 70 % | Score is now the share of full-alfalfa irrigation saved, stretched so that saving half scores 1 |
 | "Long-term water trends" source not fixed | GRACE is far too coarse for one valley | USGS well records inside the valley (310 wells, back to the 1960s) |
 | MODIS window around the pilot centre | Two edge fields fell outside: the sinusoidal grid is sheared at this longitude | Window widened; all 14 fields covered |
 
-Still open: IMERG (needs the account owner's one-click approval), and review of the
-rotation library by a local agronomist.
+Still open: review of the rotation library by a local agronomist.

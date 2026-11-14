@@ -23,8 +23,8 @@ pressure without wrecking my hay income, and what would I need to check first?"*
 | Time | Do | Say |
 | :-- | :-- | :-- |
 | 0:00 | Show the map. Point at the yellow sentence in the dark strip. | "This is Diamond Valley, Nevada. Every circle is a centre pivot, mostly alfalfa. Pumping here has outrun recharge for decades. Our tool helps a grower compare rotations. It never tells them what to plant." |
-| 0:15 | Click pivot **5**. | "Pick a field. Everything you now see is real data: NASA POWER weather, SMAP soil moisture, Landsat and MODIS greenness, SRTM terrain, plus USDA soils and crop maps, OpenET water use and USGS wells." |
-| 0:30 | Point at the crop strip, then the stat tiles. | "Alfalfa in every year on this strip, thirteen years running in the full record. It used about 810 mm of water each growing season, on a loamy fine sand with half a percent organic matter. Rain supplies about 215 mm a year; the weather asks for 1,340." |
+| 0:15 | Click pivot **5**. | "Pick a field. Everything you now see is real data: NASA POWER weather, GPM IMERG rainfall, SMAP soil moisture, Landsat and MODIS greenness, SRTM terrain, plus USDA soils and crop maps, OpenET water use and USGS wells." |
+| 0:30 | Point at the crop strip, then the stat tiles. | "Alfalfa in every year on this strip, thirteen years running in the full record. It used about 810 mm of water each growing season, on a loamy fine sand with half a percent organic matter. Rain supplies about 205 mm a year; the weather asks for 1,340." |
 | 0:45 | Point at the "Through the year" calendar. | "This calendar answers two of the challenge's questions. Brown dots: months with little green cover. Triangles: when wind and rain are hardest on this soil. Diamonds: when heat and water demand stack up on the crop, here June and July." |
 | 1:00 | Scroll to **Compare rotations**. Point at the rings. | "Five rotations, the existing one included. Each ring is a pivot seen from above: one lap is the whole rotation, colours are crops, pale gaps are bare soil. Under the default priorities the low-water sequence scores highest, mainly on saving water and breaking pest cycles, and it scores lowest on income. The tool says both." |
 | 1:20 | Drag **Forage and income** to the top, **Save water** to zero. | "Now I am a grower who cannot give up hay income. Continuous alfalfa moves to the top. There is no single best rotation, only the best fit for your priorities." Then press **Reset**. |
@@ -45,13 +45,12 @@ pressure without wrecking my hay income, and what would I need to check first?"*
 - **Draw my own field**, tap four corners inside the dashed box, **Finish field**: it is
   scored from the local rasters, with OpenET and MODIS marked "not loaded" and
   confidence lowered.
-- **About the data**: every source with its status. IMERG is shown as not loaded, with
-  the exact step needed, rather than being faked.
+- **About the data**: every source with its status, resolution, caveats and credit. A
+  source that fails to load is shown as missing with the step needed, never faked.
 
 ### Honest answers to likely questions
 
 - *Is any of this simulated?* No. Every value was downloaded from the named source.
-  IMERG is missing and is shown as missing.
 - *Did you train a model?* No. Transparent rules and a weighted sum. With no paired
   yield data, a yield model could not have been validated.
 - *Has a farmer or agronomist reviewed it?* Not yet. The crop table is from published
@@ -95,19 +94,20 @@ first Critical Management Area for groundwater. 14 real fields detected from Lan
 
 ### Validity
 
-- NASA data used meaningfully: POWER (weather, reference ET), SMAP (soil-moisture
-  anomaly), Landsat (field outlines, greenness, cover), MODIS (25-year greenness), SRTM
+- NASA data used meaningfully: POWER (weather, reference ET), GPM IMERG (rainfall, heavy-rain
+  days), SMAP (soil-moisture anomaly), Landsat (field outlines, greenness, cover), MODIS (25-year greenness), SRTM
   (terrain), with USDA SSURGO and CDL, OpenET, USGS wells and gridMET.
 - Published, transparent methods: FAO-56 Penman-Monteith, FAO-56 crop coefficients,
   USDA-SCS effective rain, FAO-33 yield response, Theil-Sen trends with a significance
   test. No black-box model.
 - Sources are cross-checked rather than trusted: the crop map against Landsat greenness;
-  NASA POWER against gridMET (frost-free season 134 days raw, 81-93 corrected);
+  NASA POWER against gridMET (frost-free season 134 days raw, 81-93 corrected); IMERG
+  rainfall against gridMET (4-18 % higher over a year);
   textbook water demand against OpenET (fields use 68-86 % of it).
 - Uncertainty is shown, not hidden: a confidence level on every score, OpenET model
   spread, doubtful years flagged, missing sources named on every field.
 - Reproducible: one script per source, cached downloads, sanity checks logged in
-  DATA_LOG.md, 47 automated tests, no demo data.
+  DATA_LOG.md, 48 automated tests, no demo data.
 
 ### Relevance
 
@@ -130,6 +130,4 @@ first Critical Management Area for groundwater. 14 real fields detected from Lan
 
 ### What is not done
 
-- GPM IMERG is not loaded: the Earthdata account needs to accept the GES DISC data-use
-  agreement (one click; the step is in the README).
 - One valley, 14 fields, no local expert review yet, no prices or yields.

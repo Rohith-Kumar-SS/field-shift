@@ -132,14 +132,22 @@ def build_custom(geojson: dict, name: str, store: dict) -> tuple[dict, dict, dic
         if len(hit):
             smap = store["smap"][store["smap"]["cell_id"] == hit.iloc[0]["cell_id"]]
 
+    # IMERG: the 0.1-degree cell under the field's centre, if that cell was downloaded
+    imerg_cell = f"G{math.floor((meta['lon'] + 180) / 0.1)}_{math.floor((meta['lat'] + 90) / 0.1)}"
+    imerg = None
+    if store.get("imerg") is not None:
+        rows = store["imerg"][store["imerg"]["cell_id"] == imerg_cell]
+        imerg = rows if len(rows) else None
+
     ctx, ev = ctxmod.build(
         meta, store["kb"], power_daily=power,
         grid_elevation_m=store["cells"]["cells"][cell]["grid_elevation_m"],
         soil=soil, terrain=terrain_for(gdf), cdl_rows=cdl_rows,
         landsat_month=landsat_monthly_for(gdf), modis=None, openet=None,
-        openet_valley=store.get("openet_valley"), smap=smap, imerg=None,
+        openet_valley=store.get("openet_valley"), smap=smap, imerg=imerg,
         wells=store.get("wells"), levels=store.get("levels"), bias=store["bias"].get(near["field_id"]))
     ctx["nearest_pilot_field"] = near["field_id"]
+    ctx["imerg_cell"] = imerg_cell if imerg is not None else None
     ev["custom_note"] = ("Drawn by hand. Greenness comes from monthly Landsat composites, soil from the "
                          "survey map units under the shape, and weather from the same grid cell as "
                          f"{near['name']}. OpenET water use and the 25-year MODIS record are prepared "

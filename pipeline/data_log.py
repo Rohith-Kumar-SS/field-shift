@@ -30,8 +30,8 @@ NOT_USED = [
      "Not fetched separately. gridMET, which is used to correct NASA POWER, already carries PRISM's "
      "station-and-terrain climatology at 4 km with daily values, which is what frost dates need."),
     ("NLDAS / GLDAS", "OPTIONAL",
-     "Not fetched. They sit behind the same GES DISC data-use agreement that currently blocks IMERG (see "
-     "above). Once that agreement is accepted they could add a longer modelled soil-moisture record."),
+     "Not fetched. Model output on 12-25 km grids; they could add a longer modelled soil-moisture record "
+     "than SMAP's (from 1979), through the same GES DISC access IMERG uses. Left out for time."),
     ("ERA5", "OPTIONAL",
      "Not fetched. Needs a Copernicus Climate Data Store account and key, which were not provided, and at "
      "~31 km it would add little beyond NASA POWER."),

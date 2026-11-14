@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 from .agromet import monthly_zscore, theil_sen_trend
-from .climate import MONTHS, Scenario, prepare_daily, summarise
+from .climate import MONTHS, Scenario, field_precip, prepare_daily, summarise
 from .history import interpret_history
 from .scoring import hazard_weights
 
@@ -167,11 +167,7 @@ def build(meta: dict, kb: dict, *, power_daily: pd.DataFrame, grid_elevation_m: 
     """Return (context, evidence) for one field. Missing sources are recorded, never invented."""
     elev = float((terrain or {}).get("elevation_m") or meta.get("elevation_m") or grid_elevation_m)
     slope = (terrain or {}).get("slope_pct_plane")
-    precip_override = None
-    if imerg is not None and not imerg.empty:
-        s = imerg.set_index("date")["precip_mm"]
-        base = power_daily.set_index(pd.to_datetime(power_daily["date"]))["PRECTOTCORR"]
-        precip_override = s.reindex(base.index).fillna(base)      # POWER fills days IMERG lacks
+    precip_override = field_precip(power_daily, imerg, bias)
     prep = prepare_daily(power_daily, meta["lat"], elev, grid_elevation_m, Scenario(), precip=precip_override,
                          bias=bias)
     clim = summarise(prep)
@@ -204,7 +200,22 @@ def build(meta: dict, kb: dict, *, power_daily: pd.DataFrame, grid_elevation_m: 
     peak_months = hazard["peak_months"]
     lc = [calendar[m]["low_cover_share"] for m in peak_months if calendar[m]["low_cover_share"] is not None]
 
-    trends = {k: theil_sen_trend(annual["year"], annual[k]) for k in
+    # A trend must not straddle a change of data source. When IMERG supplies the rain, the
+    # years before its record starts come from NASA POWER, so rain-based trends use the
+    # IMERG years only.
+    rain_start = None
+    if precip_override is not None and imerg is not None and len(imerg):
+        rain_start = int(pd.to_datetime(imerg["date"]).dt.year.min())
+
+    def trend_of(key: str) -> dict:
+        a = annual
+        if rain_start is not None and key in ("precip", "heavy_rain_days", "water_balance"):
+            a = annual[annual["year"] >= rain_start]
+        t = theil_sen_trend(a["year"], a[key])
+        t["from_year"] = int(a["year"].min()) if len(a) else None
+        return t
+
+    trends = {k: trend_of(k) for k in
               ("tmean", "precip", "et0", "days_over_32", "frost_free_days", "water_balance",
                "heavy_rain_days", "gs_tmean")}
     gw = groundwater_near(meta["lon"], meta["lat"], wells, levels)
@@ -247,7 +258,10 @@ def build(meta: dict, kb: dict, *, power_daily: pd.DataFrame, grid_elevation_m: 
         "correction": ({"method": "gridmet", "tmin_delta": bias["tmin_delta"], "tmax_delta": bias["tmax_delta"],
                         "precip_ratio": bias["precip_ratio"], "check": bias.get("check", {})} if bias else
                        {"method": "lapse", "shift_c": round(0.0065 * (grid_elevation_m - elev), 2)}),
-        "rain_source": "GPM IMERG (NASA POWER on days IMERG lacks)" if sources["imerg"] else "NASA POWER",
+        "rain_source": (("GPM IMERG satellite rainfall" + (", scaled month by month to gridMET" if (bias or {}).get("imerg_precip_ratio") else "")
+                         + " (corrected NASA POWER before 2001 and where IMERG has no file)") if sources["imerg"]
+                        else "NASA POWER" + (", corrected month by month to gridMET" if bias else "")),
+        "imerg": sources["imerg"],
     }
 
     water: dict[str, Any] = {"calibration": calib, "hazard": {k: v for k, v in hazard.items() if k != "weights"}}
@@ -286,13 +300,18 @@ def build(meta: dict, kb: dict, *, power_daily: pd.DataFrame, grid_elevation_m: 
             row["et_openet"] = round(float(sel["et_mm"].mean()), 1) if len(sel) else None
         norm.append(row)
     water["monthly_normals"] = norm
+    imerg_year = {}
+    if imerg is not None and len(imerg):
+        iy = imerg.assign(year=pd.to_datetime(imerg["date"]).dt.year).groupby("year")["precip_mm"].agg(["sum", "count"])
+        imerg_year = {int(y): round(float(r["sum"])) for y, r in iy.iterrows() if r["count"] >= 360}
     if ov is not None:
         yr = ov.assign(year=ov["date"].dt.year).groupby("year")[["eto_mm", "pr_mm"]].sum()
         water["source_comparison"] = [
             {"year": int(y), "et0_power": round(float(et0_ym.loc[y].sum())) if y in et0_ym.index.get_level_values(0) else None,
              "eto_gridmet": round(float(r["eto_mm"])),
              "precip_power": round(float(p_ym.loc[y].sum())) if y in p_ym.index.get_level_values(0) else None,
-             "precip_gridmet": round(float(r["pr_mm"]))} for y, r in yr.iterrows()]
+             "precip_gridmet": round(float(r["pr_mm"])),
+             "precip_imerg_raw": imerg_year.get(int(y))} for y, r in yr.iterrows()]
     ev["water"] = water
 
     if sources["smap"]:

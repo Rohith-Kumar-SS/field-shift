@@ -62,14 +62,14 @@
    "source": "gpm_imerg",
    "title": "GPM IMERG Final Run daily precipitation (GPM_3IMERGDF v07)",
    "tier": "MUST",
-   "status": "failed",
-   "resolution": "",
-   "date_range": "",
-   "credit": "",
-   "message": "GES DISC refused the download: HTTP 403 (EULA Acceptance Failure)",
-   "action_needed": "Sign in at https://urs.earthdata.nasa.gov with the account that issued EARTHDATA_TOKEN, then open https://urs.earthdata.nasa.gov/approve_app?client_id=e2WVk8Pw6weeLUKZYOxvTQ and approve 'NASA GESDISC DATA ARCHIVE' (Applications > Authorized Apps > Approve More Applications). No new token is needed. Then run `python -m pipeline.s02_imerg` and `python -m pipeline.s20_indicators`.",
+   "status": "ok",
+   "resolution": "0.1 degree (~9 x 11 km here); daily accumulation from half-hourly estimates",
+   "date_range": "2001-01-01 to 2025-09-30",
+   "credit": "Huffman, G. J. et al. (2023). GPM IMERG Final Precipitation L3 1 day 0.1 degree x 0.1 degree V07. NASA Goddard Earth Sciences Data and Information Services Center (GES DISC).",
+   "message": "9,039 days; 0 daily files failed; sanity passed",
+   "action_needed": "",
    "is_demo_data": false,
-   "notes": ""
+   "notes": "A satellite estimate calibrated to monthly gauge totals, not a rain gauge: it can miss or misplace small summer thunderstorms and struggles with snowfall over mountains. One cell covers many fields. The product's randomError field was not used: its scale in the daily files could not be interpreted reliably."
   },
   {
    "source": "gridmet",

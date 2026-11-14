@@ -314,7 +314,8 @@ def criterion_detail(cid: str, res: dict, ctx: dict, kb: dict, clim: dict, hazar
     """Formula, inputs and confidence behind one criterion score."""
     s = res["scores"][cid]
     src = ctx.get("sources", {})
-    rain_src = "GPM IMERG" if src.get("imerg") else "NASA POWER corrected to gridMET (IMERG pending)"
+    rain_src = ("GPM IMERG scaled to gridMET" if src.get("imerg")
+                else "NASA POWER corrected to gridMET (IMERG pending)")
     crops_used = {e["crop"] for y in res["sequence"] for e in y["entries"]}
     local = ("corrected month by month to gridMET (4 km)" if ctx.get("climate_correction") == "gridmet"
              else "shifted to field elevation (lapse rate)")

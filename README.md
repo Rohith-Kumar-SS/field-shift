@@ -22,8 +22,9 @@ Area because groundwater pumping has exceeded recharge for decades.
 | App | Works: `python tasks.py dev`, then open http://localhost:5180 |
 | Fields | 14 real pivots, outlines detected from Landsat (93 pivots found in the pilot box) |
 | Data | Real downloads only. **No demo, sample or simulated data anywhere.** |
-| Tests | 47 passing (`python tasks.py test`) |
-| Needs your action | **GPM IMERG rainfall is not loaded**: the Earthdata account behind the token has not accepted the GES DISC data-use agreement. Exact step in [DATA_LOG.md](DATA_LOG.md) and below. The app runs without it and says so. |
+| Tests | 48 passing (`python tasks.py test`) |
+| Data sources | All eleven loaded, including GPM IMERG (see [DATA_LOG.md](DATA_LOG.md)) |
+| Still open | No agronomist has reviewed the rotation library; one valley only |
 
 ## The problem
 
@@ -39,7 +40,7 @@ stated honestly.
 | Challenge asks for | What the app shows |
 | :-- | :-- |
 | Temperature, heat stress | Yearly mean temperature and days above 32 °C, 1991-2025, with a trend test |
-| Rainfall, extreme precipitation | Yearly rain, heavy-rain days, monthly normals |
+| Rainfall, extreme precipitation | GPM IMERG yearly rain, heavy-rain days and monthly normals |
 | Soil moisture | SMAP monthly anomaly (drier or wetter than normal for that month), 2015-2025 |
 | Evaporation | OpenET field-scale actual ET with the model spread, reference ET, water balance |
 | Frost risk | Frost-free season every year, and in how many years it was long enough for each crop |
@@ -88,19 +89,15 @@ A single step can be re-run with `python tasks.py data imerg indicators datalog`
 are read with python-dotenv, sent only to the service they belong to, and never printed
 or logged. Rotate them after the event if they were ever shared in a chat.
 
-### Action needed: GPM IMERG
+### Earthdata access for IMERG
 
-GES DISC answers `HTTP 403 EULA Acceptance Failure` for the token's account.
-
-1. Sign in at https://urs.earthdata.nasa.gov **with the account that issued the token**.
-2. Open https://urs.earthdata.nasa.gov/approve_app?client_id=e2WVk8Pw6weeLUKZYOxvTQ and
-   approve **NASA GESDISC DATA ARCHIVE** (Applications > Authorized Apps > Approve More
-   Applications). No new token is needed.
-3. Run `python tasks.py data imerg indicators datalog`.
-
-Until then rainfall comes from NASA POWER corrected to gridMET, and the app marks IMERG
-as "not loaded" on every field. The IMERG reader (`pipeline/s02_imerg.py`) could not be
-exercised past the authorisation check, so treat its first real run as a test.
+GPM IMERG comes from NASA's GES DISC, which needs one extra step beyond a token: the
+Earthdata account that issued the token must approve the **NASA GESDISC DATA ARCHIVE**
+application once (https://urs.earthdata.nasa.gov > Applications > Authorized Apps >
+Approve More Applications). Without it GES DISC answers `HTTP 403 EULA Acceptance
+Failure`; the pipeline then records the exact step in DATA_LOG.md, writes no rainfall
+data, and the app falls back to NASA POWER rainfall and labels it. This was done for
+the current data on 15 November 2026.
 
 Earth Engine is **not required**: `earthengine authenticate` was never run on the build
 machine, so Landsat is read from Microsoft Planetary Computer (the same Landsat
@@ -112,7 +109,7 @@ Collection 2 Level-2 scenes).
 flowchart LR
   subgraph Sources
     P[NASA POWER] --- S[SMAP] --- L[Landsat 8/9] --- M[MODIS] --- T[SRTM]
-    I[GPM IMERG - pending] --- O[OpenET] --- U[SSURGO] --- C[USDA CDL] --- W[USGS wells] --- G[gridMET]
+    I[GPM IMERG] --- O[OpenET] --- U[SSURGO] --- C[USDA CDL] --- W[USGS wells] --- G[gridMET]
   end
   Sources --> PIPE["pipeline/ one script per source, cached in data/raw"]
   PIPE --> PROC["data/processed: Parquet, GeoJSON, rasters, per-field JSON"]
@@ -164,7 +161,7 @@ Details, date ranges, sanity checks and credits for each: [DATA_LOG.md](DATA_LOG
 | Tier | Dataset | Status | Used for |
 | :-- | :-- | :-- | :-- |
 | MUST | NASA POWER | Loaded: 12,784 days, 1991-2025 | Reference ET, heat, frost, wind, rain, trends, scenarios |
-| MUST | GPM IMERG | **Not loaded: needs the GES DISC agreement** | Rainfall, heavy-rain days |
+| MUST | GPM IMERG | Loaded: 9,039 days, 2001-01-01 to 2025-09-30 | Rainfall, heavy-rain days |
 | MUST | SMAP SPL3SMP_E | Loaded: 2,857 retrieval days, 2015-2025 | Soil-moisture anomaly |
 | MUST | SSURGO | Loaded: 30 map units | Soil properties, erodibility, salinity |
 | MUST | USDA CDL | Loaded: 2008-2025 | Crop history, existing rotation |
@@ -208,6 +205,15 @@ These came out of the pipeline, not out of assumptions:
 - **Hot days are increasing**, by roughly 5 to 9 more days above 32 °C per decade since
   1991, depending on the dataset (gridMET or corrected NASA POWER) and the grid cell;
   the trend is statistically significant in both.
+- **Satellite rainfall holds up against the ground-informed grid.** GPM IMERG gives the
+  valley 228-240 mm a year against 200-222 mm from gridMET on the same days, about
+  4-18 % more. It reads high in January and low in November (snow is hard to see from
+  orbit), so IMERG is scaled month by month to gridMET before use, and the app shows
+  both the downloaded and the used values.
+- **A trend must not straddle a change of data source.** Rain before 2001 comes from NASA
+  POWER and from 2001 from IMERG. Computed across that join, heavy-rain days looked
+  like they were "increasing"; computed on the IMERG years alone there is no clear
+  trend. Rain-based trends are therefore reported from 2001 only.
 - **The crop map is sometimes wrong.** It labels some green, irrigated pivots
   "shrubland", "evergreen forest" or "wetland" in single years. Landsat greenness is
   used as a second opinion and those years are flagged for the farmer to correct.
@@ -234,7 +240,7 @@ These came out of the pipeline, not out of assumptions:
 
 ## Tests
 
-`python tasks.py test` runs 47 tests: FAO-56 reference ET against the worked examples in
+`python tasks.py test` runs 48 tests: FAO-56 reference ET against the worked examples in
 the FAO paper, effective rain, frost and trend functions, area-weighted zonal
 statistics, grid indexing, crop-history interpretation, knowledge-base validation, each
 scoring criterion, constraints, scenarios, the wording rule (the output never tells the
@@ -243,7 +249,7 @@ field.
 
 ## Credits
 
-Data: NASA POWER (NASA LaRC); SMAP (NASA NSIDC DAAC); Landsat 8/9 (USGS and NASA, via
+Data: NASA POWER (NASA LaRC); GPM IMERG (NASA GES DISC); SMAP (NASA NSIDC DAAC); Landsat 8/9 (USGS and NASA, via
 Microsoft Planetary Computer); MODIS MOD13Q1 (NASA LP DAAC, via ORNL DAAC); SRTM (NASA
 JPL, LP DAAC); USDA NRCS SSURGO; USDA NASS Cropland Data Layer; OpenET; USGS National
 Water Information System; gridMET (Abatzoglou 2013). Basemap: Sentinel-2 cloudless by

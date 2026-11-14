@@ -4,12 +4,12 @@ data-use agreement accepted on the Earthdata account that issued the token.
 Product: GPM_3IMERGDF v07 (IMERG Final Run, daily, 0.1 degree, mm/day).
 
 Small clips only: each daily file is ~28 MB of global data. Instead of downloading it we
-open it remotely (HTTP range requests) and read only the HDF5 chunk that holds the
-valley's four 0.1-degree cells.
+ask NASA's cloud OPeNDAP service for only the valley's four 0.1-degree cells (about 26 KB
+per day). If a file has no OPeNDAP link, it is opened remotely and one chunk is read.
 
 Outputs
   data/raw/imerg/imerg_<year>.parquet          (cache, one file per year)
-  data/processed/imerg_cell_daily.parquet      daily precipitation + IMERG's own random error
+  data/processed/imerg_cell_daily.parquet      daily precipitation per cell
   data/processed/field_imerg_cell.json         which cell each field falls in
 
 If the account has not accepted the agreement, GES DISC answers HTTP 403 "EULA Acceptance
@@ -27,7 +27,7 @@ import pandas as pd
 import requests
 
 from .common import PILOT, PROCESSED, RAW, SourceError, load_fields, run_source, sanity_range, write_status
-from .earthdata import list_granules, session
+from .earthdata import list_granules, opendap_subset, read_nc, session
 
 SOURCE, TITLE, TIER = "gpm_imerg", "GPM IMERG Final Run daily precipitation (GPM_3IMERGDF v07)", "MUST"
 SHORT_NAME = "GPM_3IMERGDF"
@@ -85,7 +85,35 @@ def resolve(url: str) -> str:
     raise SourceError("Too many redirects resolving a GES DISC download link")
 
 
-def read_day(gran: dict, win) -> list[dict]:
+def _rows(day: str, win, p: np.ndarray, lon: np.ndarray, lat: np.ndarray) -> list[dict]:
+    i0, _, j0, _ = win
+    p = np.asarray(p, dtype="float64")
+    p[p < 0] = np.nan
+    return [{"date": day, "lon_idx": i0 + a, "lat_idx": j0 + b, "lon": round(float(lon[a]), 2),
+             "lat": round(float(lat[b]), 2), "precip_mm": p[a, b]}
+            for a in range(p.shape[0]) for b in range(p.shape[1])]
+
+
+def read_day_opendap(gran: dict, win) -> list[dict]:
+    """Preferred route: ask NASA's cloud OPeNDAP for just the valley's cells (~26 KB, ~2 s)."""
+    i0, i1, j0, j1 = win
+    ce = f"/precipitation[0:0][{i0}:{i1}][{j0}:{j1}];/lon[{i0}:{i1}];/lat[{j0}:{j1}]"
+    try:
+        ds = read_nc(opendap_subset(gran["opendap"], ce))
+    except SourceError as exc:
+        if exc.action:      # refused: point at the GES DISC approval specifically
+            raise SourceError(str(exc), action=APPROVE_HELP.format(url=DEFAULT_APPROVE_URL)) from exc
+        raise
+    try:
+        p = np.ma.filled(ds["precipitation"][0], np.nan)
+        lon, lat = np.asarray(ds["lon"][:]), np.asarray(ds["lat"][:])
+    finally:
+        ds.close()
+    return _rows(gran["start"][:10], win, p, lon, lat)
+
+
+def read_day_remote_file(gran: dict, win) -> list[dict]:
+    """Fallback route: open the 28 MB daily file remotely and read one chunk (slow, ~40 s)."""
     import fsspec
     import h5py
 
@@ -96,15 +124,15 @@ def read_day(gran: dict, win) -> list[dict]:
         with h5py.File(fh, "r") as h5:
             grp = h5["Grid"] if "Grid" in h5 else h5
             p = np.asarray(grp["precipitation"][0, i0:i1 + 1, j0:j1 + 1], dtype="float64")
-            err = np.asarray(grp["randomError"][0, i0:i1 + 1, j0:j1 + 1], dtype="float64")
             lon = np.asarray(grp["lon"][i0:i1 + 1], dtype="float64")
             lat = np.asarray(grp["lat"][j0:j1 + 1], dtype="float64")
-    p[p < 0] = np.nan
-    err[err < 0] = np.nan
-    day = gran["start"][:10]
-    return [{"date": day, "lon_idx": i0 + a, "lat_idx": j0 + b, "lon": round(float(lon[a]), 2),
-             "lat": round(float(lat[b]), 2), "precip_mm": p[a, b], "random_error_mm": err[a, b]}
-            for a in range(p.shape[0]) for b in range(p.shape[1])]
+    return _rows(gran["start"][:10], win, p, lon, lat)
+
+
+def read_day(gran: dict, win) -> list[dict]:
+    if gran.get("opendap"):
+        return read_day_opendap(gran, win)
+    return read_day_remote_file(gran, win)
 
 
 def fetch_all(workers: int = 12) -> tuple[pd.DataFrame, list[str]]:
@@ -120,7 +148,8 @@ def fetch_all(workers: int = 12) -> tuple[pd.DataFrame, list[str]]:
             frames.append(pd.read_parquet(cache))
             continue
         grans = {g["start"][:10]: g for g in
-                 list_granules(cid, f"{year}-01-01T00:00:00Z,{year}-12-31T23:59:59Z") if g["https"]}
+                 list_granules(cid, f"{year}-01-01T00:00:00Z,{year}-12-31T23:59:59Z")
+                 if g["opendap"] or g["https"]}
         if not grans:
             continue
         if not probed:      # one request first: fail fast (and clearly) if access is not approved
@@ -172,20 +201,21 @@ def main() -> None:
     write_status(
         SOURCE, status="ok" if (ok and len(failed) < 60) else "partial", title=TITLE, tier=TIER,
         fetched=f"{data['date'].nunique():,} daily files, {data['cell_id'].nunique()} cells of 0.1 degree "
-                "over the valley (precipitation and randomError)",
+                "over the valley",
         resolution="0.1 degree (~9 x 11 km here); daily accumulation from half-hourly estimates",
         date_range=f"{data['date'].min():%Y-%m-%d} to {data['date'].max():%Y-%m-%d}",
         credit="Huffman, G. J. et al. (2023). GPM IMERG Final Precipitation L3 1 day 0.1 degree x 0.1 "
                "degree V07. NASA Goddard Earth Sciences Data and Information Services Center (GES DISC).",
-        access="GES DISC archive (data.gesdisc.earthdata.nasa.gov), remote HDF5 range reads, "
-               "Earthdata bearer token",
+        access="NASA cloud OPeNDAP (opendap.earthdata.nasa.gov), spatial subset per daily file, "
+               "Earthdata bearer token; needs the GES DISC data-use agreement accepted on the account",
         message=f"{data['date'].nunique():,} days; {len(failed)} daily files failed; "
                 f"sanity {'passed' if ok else 'CHECK'}",
         sanity={"checks": checks, "grid": "0.1 degree lon/lat", "failed_days": failed[:30]},
         outputs=["imerg_cell_daily.parquet", "field_imerg_cell.json"],
         notes="A satellite estimate calibrated to monthly gauge totals, not a rain gauge: it can "
               "miss or misplace small summer thunderstorms and struggles with snowfall over "
-              "mountains. One cell covers many fields.",
+              "mountains. One cell covers many fields. The product's randomError field was not "
+              "used: its scale in the daily files could not be interpreted reliably.",
     )
 
 

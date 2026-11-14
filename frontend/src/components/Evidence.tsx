@@ -19,7 +19,7 @@ const H = 230;
 
 function trendText(t: Dict | undefined, unit: string, digits = 1): string {
   if (!t || t.slope_per_decade === null || t.slope_per_decade === undefined) return "Not enough years for a trend.";
-  const s = `${t.slope_per_decade > 0 ? "+" : ""}${fmt(t.slope_per_decade, digits)} ${unit} per decade`;
+  const s = `${t.slope_per_decade > 0 ? "+" : ""}${fmt(t.slope_per_decade, digits)} ${unit} per decade${t.from_year ? ` since ${t.from_year}` : ""}`;
   if (!t.significant) return `No clear trend (${s}, which could be chance).`;
   return `${t.direction === "increasing" ? "Rising" : "Falling"}: ${s} (unlikely to be chance).`;
 }
@@ -76,7 +76,7 @@ function WaterPanel({ ev }: { ev: Dict }) {
       <ChartFrame
         title="A typical year: rain against the weather's thirst (mm a month)"
         lede={<>Over a year the weather asks for about <strong>{fmt(gap)} mm</strong> ({fmt(mmToIn(gap), 0)} in) more water than rain supplies. That gap is what irrigation has to cover.</>}
-        source={`Rain and reference ET: NASA POWER, corrected to gridMET, 1996–2025 averages.${hasOpenet ? " Water used: OpenET, 2016–2025." : ""} Reference ET is for mown grass, not your crop.`}
+        source={`Rain: ${ev.climate?.rain_source ?? "NASA POWER"}. Reference ET: NASA POWER, corrected to gridMET. 1996–2025 averages.${hasOpenet ? " Water used: OpenET, 2016–2025." : ""} Reference ET is for mown grass, not your crop.`}
         legend={[{ label: "Rain", color: SERIES[0], shape: "bar" }, { label: "Weather's demand (reference ET)", color: SERIES[3], shape: "bar" }, ...(hasOpenet ? [{ label: "Water this field used", color: SERIES[2], shape: "bar" as const }] : [])]}
         rows={normals} columns={[{ key: "name", label: "Month" }, { key: "precip", label: "Rain (mm)" }, { key: "et0_power", label: "Reference ET (mm)" }, { key: "et_openet", label: "Water used (mm)" }, { key: "balance", label: "Rain minus demand" }]}>
         <ResponsiveContainer width="100%" height={H}>
@@ -122,11 +122,14 @@ function WaterPanel({ ev }: { ev: Dict }) {
       {cmp.length > 0 && (
         <div className="explain">
           <h4>Two sources, two answers</h4>
-          <p>NASA POWER is a satellite-and-model product on a ~50 km grid. gridMET blends weather stations and terrain at 4 km. Where they disagree, that disagreement is the uncertainty.</p>
+          <p>
+            NASA POWER is a satellite-and-model product on a ~50 km grid. GPM IMERG is satellite rainfall on a ~10 km grid. gridMET blends weather stations and terrain at 4 km. Where they disagree, that disagreement is the
+            uncertainty. “Rain the tool uses” is {ev.climate?.rain_source ?? "NASA POWER"}.
+          </p>
           <div className="table-scroll">
             <table className="data-table">
-              <thead><tr><th>Year</th><th>Rain, corrected NASA POWER (mm)</th><th>Rain, gridMET (mm)</th><th>Reference ET, NASA POWER (mm)</th><th>Reference ET, gridMET (mm)</th></tr></thead>
-              <tbody>{cmp.map((r) => <tr key={r.year}><td>{r.year}</td><td className="num">{fmt(r.precip_power)}</td><td className="num">{fmt(r.precip_gridmet)}</td><td className="num">{fmt(r.et0_power)}</td><td className="num">{fmt(r.eto_gridmet)}</td></tr>)}</tbody>
+              <thead><tr><th>Year</th><th>Rain the tool uses (mm)</th>{ev.climate?.imerg && <th>Rain, IMERG as downloaded (mm)</th>}<th>Rain, gridMET (mm)</th><th>Reference ET, NASA POWER (mm)</th><th>Reference ET, gridMET (mm)</th></tr></thead>
+              <tbody>{cmp.map((r) => <tr key={r.year}><td>{r.year}</td><td className="num">{fmt(r.precip_power)}</td>{ev.climate?.imerg && <td className="num">{fmt(r.precip_imerg_raw)}</td>}<td className="num">{fmt(r.precip_gridmet)}</td><td className="num">{fmt(r.et0_power)}</td><td className="num">{fmt(r.eto_gridmet)}</td></tr>)}</tbody>
             </table>
           </div>
         </div>
@@ -194,7 +197,7 @@ function ClimatePanel({ ev }: { ev: Dict }) {
         <ChartFrame title="Frost-free season (days)" lede={trendText(t.frost_free_days, "days")} source={src + " The coldest hollows frost earlier and later than this."} rows={rows} columns={yearCols("frost_free_days", "Frost-free days")}>
           <YearBars rows={rows} k="frost_free_days" color={SERIES[2]} unit="Frost-free days" refs={[{ y: 75, label: "teff needs ~75" }]} />
         </ChartFrame>
-        <ChartFrame title="Rain and snow by year (mm)" lede={trendText(t.precip, "mm", 0)} source={`${c.rain_source ?? "NASA POWER"}. GPM IMERG satellite rainfall is not loaded yet.`} rows={rows} columns={[...yearCols("precip", "Rain (mm)"), { key: "heavy_rain_days", label: "Days with 10 mm or more" }]}>
+        <ChartFrame title="Rain and snow by year (mm)" lede={trendText(t.precip, "mm", 0)} source={`${c.rain_source ?? "NASA POWER"}.${c.imerg ? " A ~10 km satellite estimate tied to rain gauges monthly: it can miss small summer storms." : " GPM IMERG satellite rainfall is not loaded yet."}`} rows={rows} columns={[...yearCols("precip", "Rain (mm)"), { key: "heavy_rain_days", label: "Days with 10 mm or more" }]}>
           <YearBars rows={rows} k="precip" color={SERIES[0]} unit="Rain (mm)" />
         </ChartFrame>
       </div>

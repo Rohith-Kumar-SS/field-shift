@@ -42,6 +42,29 @@ def _monthly_lookup(table: dict, month: np.ndarray) -> np.ndarray:
     return vals[month - 1]
 
 
+def field_precip(power_daily: pd.DataFrame, imerg: pd.DataFrame | None, bias: dict | None) -> pd.Series | None:
+    """Daily rainfall for a field: GPM IMERG where it exists, corrected NASA POWER elsewhere.
+
+    Both are scaled month by month to gridMET's normals when a correction table is given
+    (`imerg_precip_ratio` for IMERG, `precip_ratio` for NASA POWER), so the series does not
+    jump where one source hands over to the other. Returns None when there is no IMERG
+    record, in which case prepare_daily uses NASA POWER on its own.
+    """
+    if imerg is None or len(imerg) == 0:
+        return None
+    dates = pd.to_datetime(power_daily["date"])
+    base = pd.Series(power_daily["PRECTOTCORR"].to_numpy(float), index=dates).sort_index()
+    base = base[~base.index.duplicated()]
+    month = base.index.month.to_numpy()
+    if bias and "precip_ratio" in bias:
+        base = base * _monthly_lookup(bias["precip_ratio"], month)
+    s = pd.Series(imerg["precip_mm"].to_numpy(float), index=pd.to_datetime(imerg["date"])).sort_index()
+    s = s[~s.index.duplicated()].reindex(base.index)
+    if bias and "imerg_precip_ratio" in bias:
+        s = s * _monthly_lookup(bias["imerg_precip_ratio"], month)
+    return s.fillna(base)
+
+
 def prepare_daily(daily: pd.DataFrame, lat: float, field_elev_m: float, grid_elev_m: float,
                   scenario: Scenario = Scenario(), precip: pd.Series | None = None,
                   bias: dict | None = None) -> pd.DataFrame:

@@ -145,3 +145,25 @@ def test_clean_makes_everything_json_safe():
     out = clean({"a": np.float64("nan"), "b": np.int64(3), "c": [np.float32(1.5), float("inf")],
                  "d": pd.Timestamp("2024-05-01"), 5: np.bool_(True)})
     assert out == {"a": None, "b": 3, "c": [1.5, None], "d": "2024-05-01", "5": True}
+
+
+def test_field_precip_uses_imerg_where_it_exists_and_corrected_power_elsewhere():
+    from engine.climate import field_precip, prepare_daily
+
+    power = pd.DataFrame({"date": pd.date_range("2000-12-30", "2001-01-03"), "PRECTOTCORR": 2.0})
+    imerg = pd.DataFrame({"date": pd.to_datetime(["2001-01-01", "2001-01-02"]), "precip_mm": [10.0, 0.0]})
+    bias = {"precip_ratio": {m: 0.5 for m in range(1, 13)}, "imerg_precip_ratio": {str(m): 0.8 for m in range(1, 13)},
+            "tmax_delta": {m: 0.0 for m in range(1, 13)}, "tmin_delta": {m: 0.0 for m in range(1, 13)}}
+    s = field_precip(power, imerg, bias)
+    assert s.loc["2000-12-31"] == pytest.approx(1.0)        # no IMERG yet: NASA POWER x its correction
+    assert s.loc["2001-01-01"] == pytest.approx(8.0)        # IMERG x its own correction
+    assert s.loc["2001-01-02"] == 0.0                       # a dry IMERG day stays dry
+    assert s.loc["2001-01-03"] == pytest.approx(1.0)
+    raw = field_precip(power, imerg, None)
+    assert raw.loc["2001-01-01"] == 10.0 and raw.loc["2000-12-30"] == 2.0
+    assert field_precip(power, None, bias) is None and field_precip(power, imerg.iloc[:0], bias) is None
+
+    # and the series reaches the daily frame unchanged (no second correction on top)
+    full = power.assign(T2M_MAX=20.0, T2M_MIN=5.0, T2MDEW=2.0, WS2M=2.0, ALLSKY_SFC_SW_DWN=10.0)
+    prep = prepare_daily(full, 39.7, 1800, 1800, precip=s, bias=bias)
+    assert prep["precip"].tolist() == pytest.approx(s.tolist())

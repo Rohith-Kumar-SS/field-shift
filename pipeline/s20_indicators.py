@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 
 from engine import context as ctxmod
-from engine.climate import Scenario
+from engine.climate import Scenario, field_precip
 from engine.knowledge import load_kb
 from engine.scoring import score_field
 
@@ -77,9 +77,40 @@ def field_inputs(f, d: dict) -> dict:
         bias=d["bias"].get(fid))
 
 
+def imerg_correction(d: dict) -> None:
+    """Monthly ratio that scales IMERG to gridMET's normals, per field; saved with the POWER one.
+
+    Same delta method as for NASA POWER: ratio = gridMET monthly normal / IMERG monthly normal
+    over the days both cover. IMERG keeps its own day-to-day and year-to-year pattern.
+    """
+    grid = _read("gridmet_daily.parquet")
+    if d["imerg"] is None or grid is None or not d["imerg_map"]:
+        return
+    changed = False
+    for fid, rec in d["bias"].items():
+        cell = d["imerg_map"].get(fid)
+        im = d["imerg"][d["imerg"]["cell_id"] == cell]
+        g = grid[grid["cell_id"] == rec.get("gridmet_cell")]
+        if im.empty or g.empty:
+            continue
+        j = pd.merge(im[["date", "precip_mm"]], g[["date", "precip_mm"]], on="date", suffixes=("_imerg", "_grid")).dropna()
+        m = j.groupby(j["date"].dt.month)[["precip_mm_imerg", "precip_mm_grid"]].mean()
+        rec["imerg_precip_ratio"] = {int(k): round(float(np.clip(r["precip_mm_grid"] / r["precip_mm_imerg"], 0.3, 3.0)), 3)
+                                     if r["precip_mm_imerg"] > 0 else 1.0 for k, r in m.iterrows()}
+        years = j["date"].dt.year.nunique()
+        rec.setdefault("check", {}).update(
+            annual_precip_imerg_raw_mm=round(float(j["precip_mm_imerg"].sum() / years)),
+            annual_precip_gridmet_same_days_mm=round(float(j["precip_mm_grid"].sum() / years)),
+            imerg_days=int(len(j)))
+        changed = True
+    if changed:
+        (PROCESSED / "power_bias.json").write_text(json.dumps(d["bias"], indent=1), encoding="utf-8")
+
+
 def main() -> None:
     kb = load_kb()
     d = load_all()
+    imerg_correction(d)
     (PROCESSED / "field_context").mkdir(exist_ok=True)
     (PROCESSED / "field_evidence").mkdir(exist_ok=True)
     summary, checks = [], []
@@ -93,7 +124,8 @@ def main() -> None:
 
         # default-priority scoring: a smoke test of the whole chain and the map's headline numbers
         run_ctx = {**ctx, "power": {"daily": inp["power_daily"], "grid_elevation_m": inp["grid_elevation_m"],
-                                    "bias": inp["bias"]}}
+                                    "bias": inp["bias"],
+                                    "precip_override": field_precip(inp["power_daily"], inp["imerg"], inp["bias"])}}
         res = score_field(run_ctx, kb, None, None, Scenario())
         existing = next(s for s in res["strategies"] if s["is_existing"])
         oa = ev["water"].get("openet_annual") or []

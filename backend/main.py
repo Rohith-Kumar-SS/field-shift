@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from engine.climate import Scenario
+from engine.climate import Scenario, field_precip
 from engine.knowledge import load_kb
 from engine.scoring import DEFAULT_CONSTRAINTS, climate_for, score_field
 
@@ -58,6 +58,7 @@ def store() -> dict[str, Any]:
         bias=_json("power_bias.json", {}), smap=_parquet("smap_cell_monthly.parquet"),
         openet_valley=_parquet("openet_valley_monthly.parquet"), levels=_parquet("groundwater_levels.parquet"),
         overlays=_json("overlays/manifest.json", {"layers": [], "legends": {}, "corners": []}),
+        imerg=_parquet("imerg_cell_daily.parquet"), imerg_map=_json("field_imerg_cell.json", {}),
         contexts={}, evidence={}, clim_base={}, custom_features={},
     )
     wells_path = PROCESSED / "groundwater_wells.geojson"
@@ -74,6 +75,14 @@ def store() -> dict[str, Any]:
     return STORE
 
 
+def imerg_for(s: dict, cell_id: str | None):
+    """IMERG daily rows for one 0.1-degree cell, or None if IMERG is not loaded."""
+    if s.get("imerg") is None or not cell_id:
+        return None
+    rows = s["imerg"][s["imerg"]["cell_id"] == cell_id]
+    return rows if len(rows) else None
+
+
 def get_context(field_id: str) -> dict:
     s = store()
     if field_id not in s["contexts"]:
@@ -82,8 +91,10 @@ def get_context(field_id: str) -> dict:
             raise HTTPException(404, f"Unknown field '{field_id}'.")
         ctx = json.loads(p.read_text(encoding="utf-8"))
         cell = s["cells"]["field_to_cell"][field_id]
-        ctx["power"] = {"daily": s["power"][s["power"]["cell_id"] == cell],
-                        "grid_elevation_m": ctx["grid_elevation_m"], "bias": s["bias"].get(field_id)}
+        daily = s["power"][s["power"]["cell_id"] == cell]
+        bias = s["bias"].get(field_id)
+        ctx["power"] = {"daily": daily, "grid_elevation_m": ctx["grid_elevation_m"], "bias": bias,
+                        "precip_override": field_precip(daily, imerg_for(s, s["imerg_map"].get(field_id)), bias)}
         s["contexts"][field_id] = ctx
     return s["contexts"][field_id]
 
@@ -198,9 +209,10 @@ def custom_field(body: CustomIn):
         raise HTTPException(422, str(exc)) from exc
     fid = feature["properties"]["field_id"]
     cell = s["cells"]["field_to_cell"][ctx["nearest_pilot_field"]]
-    ctx["power"] = {"daily": s["power"][s["power"]["cell_id"] == cell],
-                    "grid_elevation_m": ctx["grid_elevation_m"],
-                    "bias": s["bias"].get(ctx["nearest_pilot_field"])}
+    daily = s["power"][s["power"]["cell_id"] == cell]
+    bias = s["bias"].get(ctx["nearest_pilot_field"])
+    ctx["power"] = {"daily": daily, "grid_elevation_m": ctx["grid_elevation_m"], "bias": bias,
+                    "precip_override": field_precip(daily, imerg_for(s, ctx.get("imerg_cell")), bias)}
     s["contexts"][fid], s["evidence"][fid], s["custom_features"][fid] = ctx, ev, feature
     return {"feature": feature, "evidence": ev}
 
