@@ -1,0 +1,72 @@
+{
+  "terms": [
+    {
+      "id": "et",
+      "term": "Evapotranspiration (ET)",
+      "plain": "Water lost to the air and to crop growth",
+      "text": "The water that leaves a field as vapour: evaporation from the soil plus the water plants draw up and release through their leaves. A crop that used 800 mm of ET needed 800 mm of water from rain, irrigation and what was already in the soil. In this tool, ET for a field comes from OpenET, which estimates it from Landsat satellite images and weather data."
+    },
+    {
+      "id": "et0",
+      "term": "Reference ET",
+      "plain": "How thirsty the weather is",
+      "text": "The water a well-watered, mown grass surface would use in that day's weather. It depends only on sun, heat, humidity and wind, not on your crop. Hot, dry, windy days have a high reference ET. Multiplying it by a crop coefficient (a number that says how much of that a given crop uses at each stage) gives the crop's water demand."
+    },
+    {
+      "id": "ndvi",
+      "term": "NDVI",
+      "plain": "Plant greenness",
+      "text": "A number from about 0 to 1 calculated from red and near-infrared light reflected by the field. Bare soil reads around 0.1 to 0.2; a dense, healthy canopy reads 0.8 or more. It shows how much green leaf is present. It does not measure soil health, yield or organic matter, and it stops rising once a canopy is dense."
+    },
+    {
+      "id": "sm",
+      "term": "Soil-moisture anomaly",
+      "plain": "Soil moisture compared with normal",
+      "text": "How wet or dry the top few centimetres of soil are compared with what is usual for that month. Zero is normal; -1 or lower is clearly drier than usual; +1 or higher is clearly wetter. It comes from NASA's SMAP satellite, whose pixels are about 9 km wide, so it describes the valley around the field rather than the field itself, and it sees only the surface, not the root zone."
+    },
+    {
+      "id": "frost",
+      "term": "Frost risk",
+      "plain": "How long the frost-free season is",
+      "text": "The number of days between the last frost of spring and the first frost of autumn, and how much that changes from year to year. Warm-season crops such as teff die at the first frost, so the tool checks in how many of the last 30 years the frost-free season was long enough for each crop."
+    },
+    {
+      "id": "balance",
+      "term": "Water balance",
+      "plain": "Rain minus the weather's thirst",
+      "text": "Rainfall minus reference ET over a month or year. A strongly negative number means the weather demands far more water than rain supplies, so crops depend on irrigation. It is a pressure gauge, not proof that a crop was short of water."
+    },
+    {
+      "id": "irrigation",
+      "term": "Irrigation need",
+      "plain": "Crop water demand minus usable rain",
+      "text": "What irrigation has to supply: the crop's water demand minus the part of rainfall the crop can actually use. It is the amount the crop needs, not the amount you pump: pumping is higher because no system is 100 % efficient."
+    },
+    {
+      "id": "satellite",
+      "term": "Satellite vs ground measurements",
+      "plain": "A wide view from far away vs a sharp view of one spot",
+      "text": "A satellite sees everywhere, repeatedly and for free, but indirectly: it measures reflected light or microwaves and a model turns that into rainfall, moisture or water use, averaged over a pixel that may be 30 m or 9 km wide. A rain gauge, soil probe, flow meter or well measures the real thing, but only at one point. They are strongest together. Example from this valley: NASA's weather grid put the frost-free season at about 134 days; after correcting it with a station-informed dataset it is about 81 to 93 days, which is the difference between teff being safe and teff being a gamble."
+    },
+    {
+      "id": "confidence",
+      "term": "Data confidence",
+      "plain": "How much to trust a score",
+      "text": "High: several independent sources for this field agree. Medium: based on satellite or weather-model data for this field, without ground confirmation. Low: based on general crop tables or on something this tool cannot see (prices, pests, herbicide history, your water right). A low-confidence score is a question to take to a local adviser, not an answer."
+    },
+    {
+      "id": "mcda",
+      "term": "Priority-based comparison",
+      "plain": "How the overall score is built",
+      "text": "Each rotation gets a score from 0 to 1 on each of your priorities. Your sliders set how much each priority counts. The overall score is the weighted sum. Change the sliders and the ranking changes: there is no single best rotation, only the one that fits your priorities best."
+    }
+  ],
+  "disclaimer": "This tool supports your decisions. It does not replace your own judgment or local agricultural expertise.",
+  "limits": [
+    "Field outlines are detected from satellite images, not surveyed.",
+    "The crop history comes from a satellite crop map and can be wrong for single years.",
+    "Water figures are estimates of crop demand, not measurements of what you pumped.",
+    "No prices, yields, costs, pests, herbicide history or water rights are known to the tool.",
+    "Soil data are survey map units, not samples from your field."
+  ]
+}

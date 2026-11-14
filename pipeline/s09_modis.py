@@ -26,7 +26,8 @@ SOURCE, TITLE, TIER = "modis", "MODIS/Terra NDVI 250 m (MOD13Q1 v061)", "OPTIONA
 API = "https://modis.ornl.gov/rst/api/v1/MOD13Q1/subset"
 SINUSOIDAL = "+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +R=6371007.181 +units=m +no_defs"
 START_YEAR = 2001
-KM_NS, KM_EW = 8, 6          # half-height / half-width of the window around the pilot centre
+KM_NS, KM_EW = 9, 14         # half-height / half-width (km). Wide in x: the sinusoidal grid is sheared here,
+                             # so a rectangle in grid space is a parallelogram on the ground
 CHUNKS = [("001", "145"), ("161", "305"), ("321", "353")]   # <= 10 composites per request
 
 

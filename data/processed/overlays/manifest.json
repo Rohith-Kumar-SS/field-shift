@@ -1,0 +1,388 @@
+{
+ "corners": [
+  [
+   -116.08,
+   39.75
+  ],
+  [
+   -115.95,
+   39.75
+  ],
+  [
+   -115.95,
+   39.62
+  ],
+  [
+   -116.08,
+   39.62
+  ]
+ ],
+ "layers": [
+  {
+   "id": "ndvi_2018",
+   "group": "ndvi",
+   "year": 2018,
+   "file": "ndvi_summer_2018.png",
+   "label": "Summer greenness 2018"
+  },
+  {
+   "id": "ndvi_2019",
+   "group": "ndvi",
+   "year": 2019,
+   "file": "ndvi_summer_2019.png",
+   "label": "Summer greenness 2019"
+  },
+  {
+   "id": "ndvi_2020",
+   "group": "ndvi",
+   "year": 2020,
+   "file": "ndvi_summer_2020.png",
+   "label": "Summer greenness 2020"
+  },
+  {
+   "id": "ndvi_2021",
+   "group": "ndvi",
+   "year": 2021,
+   "file": "ndvi_summer_2021.png",
+   "label": "Summer greenness 2021"
+  },
+  {
+   "id": "ndvi_2022",
+   "group": "ndvi",
+   "year": 2022,
+   "file": "ndvi_summer_2022.png",
+   "label": "Summer greenness 2022"
+  },
+  {
+   "id": "ndvi_2023",
+   "group": "ndvi",
+   "year": 2023,
+   "file": "ndvi_summer_2023.png",
+   "label": "Summer greenness 2023"
+  },
+  {
+   "id": "ndvi_2024",
+   "group": "ndvi",
+   "year": 2024,
+   "file": "ndvi_summer_2024.png",
+   "label": "Summer greenness 2024"
+  },
+  {
+   "id": "ndvi_2025",
+   "group": "ndvi",
+   "year": 2025,
+   "file": "ndvi_summer_2025.png",
+   "label": "Summer greenness 2025"
+  },
+  {
+   "id": "low_cover",
+   "group": "low_cover",
+   "file": "low_cover.png",
+   "label": "Months with little green cover (Apr-Oct)"
+  },
+  {
+   "id": "cdl_2018",
+   "group": "cdl",
+   "year": 2018,
+   "file": "cdl_2018.png",
+   "label": "Crop map 2018"
+  },
+  {
+   "id": "cdl_2019",
+   "group": "cdl",
+   "year": 2019,
+   "file": "cdl_2019.png",
+   "label": "Crop map 2019"
+  },
+  {
+   "id": "cdl_2020",
+   "group": "cdl",
+   "year": 2020,
+   "file": "cdl_2020.png",
+   "label": "Crop map 2020"
+  },
+  {
+   "id": "cdl_2021",
+   "group": "cdl",
+   "year": 2021,
+   "file": "cdl_2021.png",
+   "label": "Crop map 2021"
+  },
+  {
+   "id": "cdl_2022",
+   "group": "cdl",
+   "year": 2022,
+   "file": "cdl_2022.png",
+   "label": "Crop map 2022"
+  },
+  {
+   "id": "cdl_2023",
+   "group": "cdl",
+   "year": 2023,
+   "file": "cdl_2023.png",
+   "label": "Crop map 2023"
+  },
+  {
+   "id": "cdl_2024",
+   "group": "cdl",
+   "year": 2024,
+   "file": "cdl_2024.png",
+   "label": "Crop map 2024"
+  },
+  {
+   "id": "cdl_2025",
+   "group": "cdl",
+   "year": 2025,
+   "file": "cdl_2025.png",
+   "label": "Crop map 2025"
+  },
+  {
+   "id": "slope",
+   "group": "slope",
+   "file": "slope.png",
+   "label": "Slope"
+  }
+ ],
+ "legends": {
+  "ndvi": {
+   "type": "ramp",
+   "title": "Peak summer greenness (NDVI)",
+   "min": "0 bare",
+   "max": "0.9 dense",
+   "colors": [
+    [
+     68,
+     1,
+     84
+    ],
+    [
+     72,
+     40,
+     120
+    ],
+    [
+     62,
+     74,
+     137
+    ],
+    [
+     49,
+     104,
+     142
+    ],
+    [
+     38,
+     130,
+     142
+    ],
+    [
+     31,
+     158,
+     137
+    ],
+    [
+     53,
+     183,
+     121
+    ],
+    [
+     109,
+     205,
+     89
+    ],
+    [
+     180,
+     222,
+     44
+    ],
+    [
+     253,
+     231,
+     37
+    ]
+   ],
+   "source": "Landsat 8/9 (USGS/NASA), 30 m"
+  },
+  "low_cover": {
+   "type": "ramp",
+   "title": "Months with little green cover, April-October",
+   "min": "0",
+   "max": "7",
+   "colors": [
+    [
+     68,
+     1,
+     84
+    ],
+    [
+     72,
+     40,
+     120
+    ],
+    [
+     62,
+     74,
+     137
+    ],
+    [
+     49,
+     104,
+     142
+    ],
+    [
+     38,
+     130,
+     142
+    ],
+    [
+     31,
+     158,
+     137
+    ],
+    [
+     53,
+     183,
+     121
+    ],
+    [
+     109,
+     205,
+     89
+    ],
+    [
+     180,
+     222,
+     44
+    ],
+    [
+     253,
+     231,
+     37
+    ]
+   ],
+   "source": "Landsat 8/9 monthly medians, NDVI below 0.25"
+  },
+  "slope": {
+   "type": "ramp",
+   "title": "Slope (%)",
+   "min": "0",
+   "max": "6+",
+   "colors": [
+    [
+     68,
+     1,
+     84
+    ],
+    [
+     72,
+     40,
+     120
+    ],
+    [
+     62,
+     74,
+     137
+    ],
+    [
+     49,
+     104,
+     142
+    ],
+    [
+     38,
+     130,
+     142
+    ],
+    [
+     31,
+     158,
+     137
+    ],
+    [
+     53,
+     183,
+     121
+    ],
+    [
+     109,
+     205,
+     89
+    ],
+    [
+     180,
+     222,
+     44
+    ],
+    [
+     253,
+     231,
+     37
+    ]
+   ],
+   "source": "SRTM (NASA), smoothed over ~150 m"
+  },
+  "cdl": {
+   "type": "classes",
+   "title": "Crop map",
+   "classes": [
+    {
+     "label": "Alfalfa",
+     "color": [
+      0,
+      158,
+      115
+     ]
+    },
+    {
+     "label": "Other hay / pasture",
+     "color": [
+      240,
+      228,
+      66
+     ]
+    },
+    {
+     "label": "Small grains",
+     "color": [
+      230,
+      159,
+      0
+     ]
+    },
+    {
+     "label": "Other crops",
+     "color": [
+      204,
+      121,
+      167
+     ]
+    },
+    {
+     "label": "Fallow / idle",
+     "color": [
+      213,
+      94,
+      0
+     ]
+    },
+    {
+     "label": "Shrubland and other non-crop",
+     "color": [
+      187,
+      187,
+      187
+     ]
+    },
+    {
+     "label": "Developed",
+     "color": [
+      86,
+      180,
+      233
+     ]
+    }
+   ],
+   "source": "USDA NASS Cropland Data Layer"
+  }
+ }
+}

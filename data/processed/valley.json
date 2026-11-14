@@ -137,6 +137,19 @@
    "notes": "A model estimate of water actually evaporated and transpired, not a flow-meter reading. The newest six months can still be revised. Winter values are the least reliable (snow, few clear images) and some are repeated across months; those are flagged and left out of seasonal statistics. The field-boundary and field-ID endpoints (/geodatabase/...) returned HTTP 400 for every request, so polygons detected by this project are sent to the raster endpoint instead."
   },
   {
+   "source": "overlays",
+   "title": "Map overlays (PNG)",
+   "tier": "MUST",
+   "status": "ok",
+   "resolution": "25 m Web Mercator",
+   "date_range": "",
+   "credit": "Derived by this project from Landsat, CDL and SRTM.",
+   "message": "18 overlays written",
+   "action_needed": "",
+   "is_demo_data": false,
+   "notes": ""
+  },
+  {
    "source": "smap",
    "title": "SMAP enhanced L3 soil moisture (SPL3SMP_E, 9 km)",
    "tier": "MUST",
