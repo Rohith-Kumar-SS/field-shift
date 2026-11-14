@@ -3,34 +3,34 @@
   "title": "MODIS/Terra NDVI 250 m (MOD13Q1 v061)",
   "tier": "OPTIONAL",
   "status": "ok",
-  "fetched": "75/75 requests (65 x 49 pixels around the pilot centre), 575 composites",
+  "fetched": "75/75 requests (73 x 113 pixels around the pilot centre), 575 composites",
   "resolution": "231.7 m (MODIS sinusoidal grid); 16-day maximum-value composites",
   "date_range": "2001-01-01 to 2025-12-19",
   "credit": "Didan, K. (2021). MODIS/Terra Vegetation Indices 16-Day L3 Global 250m SIN Grid V061. NASA EOSDIS LP DAAC. Subsets from ORNL DAAC (2018), MODIS and VIIRS Land Products Global Subsetting and Visualization Tool.",
   "access": "ORNL DAAC REST API https://modis.ornl.gov/rst/api/v1/MOD13Q1/subset (no key)",
-  "message": "6,900 field-composites, 575 dates; 0 request(s) missing; sanity passed",
+  "message": "8,050 field-composites, 575 dates; 0 request(s) missing; sanity passed",
   "action_needed": "",
   "sanity": {
     "checks": [
       {
         "variable": "field NDVI",
-        "n": 6900,
-        "n_finite": 6900,
+        "n": 8050,
+        "n_finite": 8050,
         "all_nan": false,
         "expected_range": [
           -0.2,
           1.0
         ],
-        "min": -0.0781,
-        "max": 0.9017,
-        "mean": 0.3854,
+        "min": -0.0774,
+        "max": 0.8882,
+        "mean": 0.389,
         "in_range": true,
         "passed": true
       },
       {
         "variable": "composites per field",
-        "n": 12,
-        "n_finite": 12,
+        "n": 14,
+        "n_finite": 14,
         "all_nan": false,
         "expected_range": [
           400,
@@ -45,9 +45,9 @@
     ],
     "crs": "MODIS sinusoidal",
     "modis_pixels_per_field": {
-      "DV-01": 0.0,
+      "DV-01": 10.2,
       "DV-02": 9.4,
-      "DV-03": 8.7,
+      "DV-03": 10.8,
       "DV-04": 9.5,
       "DV-05": 9.8,
       "DV-06": 7.6,
@@ -55,10 +55,10 @@
       "DV-08": 10.1,
       "DV-09": 9.6,
       "DV-10": 9.7,
-      "DV-11": 9.5,
+      "DV-11": 9.4,
       "DV-12": 9.5,
       "DV-13": 6.8,
-      "DV-14": 0.0
+      "DV-14": 8.6
     }
   },
   "outputs": [
@@ -66,5 +66,5 @@
   ],
   "is_demo_data": false,
   "notes": "A 50 ha pivot holds only ~9 MODIS pixels and its edge pixels mix in desert, so MODIS NDVI reads lower than Landsat. The pixel-reliability band was not fetched (it would double the requests to a slow service); the app therefore uses only each year's peak-season maximum, which is robust to cloud and snow.",
-  "generated_at": "2026-11-14T09:18:13Z"
+  "generated_at": "2026-11-14T09:31:22Z"
 }

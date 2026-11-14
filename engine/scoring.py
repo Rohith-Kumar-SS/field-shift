@@ -429,10 +429,10 @@ def criterion_detail(cid: str, res: dict, ctx: dict, kb: dict, clim: dict, hazar
         hot = round(sum(clim["heat_days_month"][32].values()), 1)
         return dict(score=s, formula="per crop: 0.5 x drought-tolerance class + 0.5 x (1 - days above its heat limit in its season / 45)",
                     headline="Copes with heat and short water: " + ("well" if s >= 0.7 else "moderately" if s >= 0.55 else "poorly"),
-                    inputs=[{"label": "Days a year above 32 degC", "value": hot, "unit": "days",
+                    inputs=[{"label": "Days a year above 32 °C", "value": hot, "unit": "days",
                              "source": f"NASA POWER, {local}"},
                             {"label": "Crops' own heat limits", "value": ", ".join(
-                                f"{c['label']} {c['heat_limit_c']} degC" for c in res["crop_notes"] if c["crop"] != "fallow"),
+                                f"{c['label']} {c['heat_limit_c']} °C" for c in res["crop_notes"] if c["crop"] != "fallow"),
                              "unit": "", "source": "knowledge base"}],
                     confidence="medium", panel="climate",
                     note="Heat days come from a ~50 km NASA weather grid corrected to local conditions, "
@@ -546,7 +546,7 @@ def why_suggested(res: dict, cond: dict, existing: dict, constraints: dict) -> l
         else:
             rate = (f"about +{a:.0f} days per decade since 1991 in NASA POWER; the ground-informed "
                     "gridMET record does not confirm a clear trend")
-        out.append({"text": f"Days above 32 degC have been increasing ({rate}); this rotation leans on crops "
+        out.append({"text": f"Days above 32 °C have been increasing ({rate}); this rotation leans on crops "
                             "that cope better with heat.", "panel": "climate"})
     if not out:
         out.append({"text": "It is included so that you can see how a different mix of crops trades off "
@@ -566,7 +566,8 @@ def dynamic_flags(res: dict, ctx: dict, cond: dict, constraints: dict, supply_mm
         if c["equipment_missing"]:
             risks.append(f"{c['label']} needs equipment you did not tick: {', '.join(c['equipment_missing'])}.")
         thr = c.get("salt_threshold_ds_m")
-        if thr and cond["ec"] is not None and cond["ec"] > thr:
+        both_alfalfa = c["crop"] == "alfalfa_est" and any(x["crop"] == "alfalfa" for x in res["crop_notes"])
+        if thr and cond["ec"] is not None and cond["ec"] > thr and not both_alfalfa:
             risks.append(f"Soil-survey salinity ({cond['ec']:.1f} dS/m) is above the level where "
                          f"{c['label'].lower()} starts losing yield ({thr} dS/m).")
         if str(c["market"]).startswith(("niche", "uncertain")) and constraints.get("market") == "established_only":
@@ -675,12 +676,18 @@ def score_field(ctx: dict, kb: dict, weights: dict | None = None, constraints: d
     for rank, r in enumerate(order, 1):
         r["rank"] = rank
     best = order[0]
-    ranked = sorted(kb["criteria"], key=lambda c: -(best["scores"][c] - np.mean([r["scores"][c] for r in results])))
-    strong = [kb["criteria"][c]["label"].lower() for c in ranked[:2]]
-    weak = kb["criteria"][ranked[-1]]["label"].lower()
+    # only priorities the farmer actually weighted can be named as reasons
+    active = [c for c in kb["criteria"] if w[c] > 0.001]
+    lead = {c: best["scores"][c] - float(np.mean([r["scores"][c] for r in results])) for c in active}
+    ranked = sorted(active, key=lambda c: -w[c] * lead[c])
+    name = lambda c: f"\"{kb['criteria'][c]['label']}\""  # noqa: E731
+    strong = [name(c) for c in ranked[:2] if lead[c] > 0] or [name(ranked[0])]
     close = len(order) > 1 and (best["total"] - order[1]["total"]) < 0.02
     statement = (f"Under your priorities, \"{best['short']}\" scores highest ({best['total'] * 100:.0f} out of 100), "
-                 f"mainly for {strong[0]} and {strong[1]}. It scores weakest for {weak}.")
+                 f"mainly on {' and '.join(strong)}.")
+    weakest = min(active, key=lambda c: lead[c])
+    if len(active) >= 3 and lead[weakest] < 0:
+        statement += f" It scores below the others on {name(weakest)}."
     if close:
         statement += f" \"{order[1]['short']}\" is within two points, so treat them as a tie."
     return {

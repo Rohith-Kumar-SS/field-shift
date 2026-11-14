@@ -345,7 +345,7 @@ def build(meta: dict, kb: dict, *, power_daily: pd.DataFrame, grid_elevation_m: 
                     "index": round(float(np.mean(vals)), 2)})
     top = sorted(vul, key=lambda r: -r["index"])[:2]
     ev["vulnerability"] = {"months": vul, "most_vulnerable": sorted(r["month"] for r in top),
-                           "method": "Each part is scaled 0-1 and averaged: hot days (>32 degC, 10 days = 1), "
+                           "method": "Each part is scaled 0-1 and averaged: hot days (>32 °C, 10 days = 1), "
                                      "frost days in May-September (10 days = 1), the gap between reference ET "
                                      "and rain, how often greenness fell well below its own normal, and how "
                                      "dry the SMAP soil-moisture pixel normally is."}

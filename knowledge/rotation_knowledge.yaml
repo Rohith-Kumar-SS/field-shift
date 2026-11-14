@@ -118,7 +118,7 @@ crops:
       n_score: "Legume: fixes its own nitrogen. Credit to the following crop commonly 80-170 kg N/ha after a stand is taken out (SARE; UC3512)."
       om_score: "Large perennial root system and several years without tillage, but nearly all top growth leaves the field as hay (UC3512; PROJECT)."
       root_depth_m: "FAO56 Table 22: maximum effective rooting depth 1.0-3.0 m for alfalfa."
-      heat_limit_c: "Cool-season legume: growth and forage quality fall off above roughly 30-35 degC ('summer slump', UC3512). 32 degC is used as the stress line."
+      heat_limit_c: "Cool-season legume: growth and forage quality fall off above roughly 30-35 °C ('summer slump', UC3512). 32 °C is used as the stress line."
       drought_tolerance: "Deep roots and the ability to go dormant and survive a dry spell, but yield falls in step with water (Ky 1.1, FAO33)."
       value_score: "Reference crop for the valley: established hay market and equipment. All other value scores are relative to this."
       salt_threshold_ds_m: "FAO29 Table 4: yield starts to fall above ECe 2.0 dS/m."
@@ -325,7 +325,7 @@ crops:
     why:
       kc: "FAO56 Table 12: barley, oats and spring wheat Kc mid 1.15, end 0.25-0.4."
       om_score: "Straw and stubble stay on the field when only the grain is taken (SARE)."
-      heat_limit_c: "Heat above about 30 degC during grain fill cuts yield in cool-season cereals."
+      heat_limit_c: "Heat above about 30 °C during grain fill cuts yield in cool-season cereals."
       salt_threshold_ds_m: "FAO29 Table 4: barley 8.0, wheat 6.0 dS/m."
 
   safflower:

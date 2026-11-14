@@ -105,7 +105,7 @@
    "resolution": "231.7 m (MODIS sinusoidal grid); 16-day maximum-value composites",
    "date_range": "2001-01-01 to 2025-12-19",
    "credit": "Didan, K. (2021). MODIS/Terra Vegetation Indices 16-Day L3 Global 250m SIN Grid V061. NASA EOSDIS LP DAAC. Subsets from ORNL DAAC (2018), MODIS and VIIRS Land Products Global Subsetting and Visualization Tool.",
-   "message": "6,900 field-composites, 575 dates; 0 request(s) missing; sanity passed",
+   "message": "8,050 field-composites, 575 dates; 0 request(s) missing; sanity passed",
    "action_needed": "",
    "is_demo_data": false,
    "notes": "A 50 ha pivot holds only ~9 MODIS pixels and its edge pixels mix in desert, so MODIS NDVI reads lower than Landsat. The pixel-reliability band was not fetched (it would double the requests to a slow service); the app therefore uses only each year's peak-season maximum, which is robust to cloud and snow."

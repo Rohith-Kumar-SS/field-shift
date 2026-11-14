@@ -36,7 +36,7 @@
    "landsat": true,
    "openet": true,
    "srtm": true,
-   "modis": false,
+   "modis": true,
    "groundwater": true
   }
  },
@@ -569,7 +569,7 @@
    "landsat": true,
    "openet": true,
    "srtm": true,
-   "modis": false,
+   "modis": true,
    "groundwater": true
   }
  }
