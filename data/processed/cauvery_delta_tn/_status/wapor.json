@@ -1,0 +1,54 @@
+{
+  "source": "wapor",
+  "title": "FAO WaPOR v3 actual evapotranspiration (300 m)",
+  "tier": "STRONG",
+  "status": "ok",
+  "fetched": "96 monthly maps, pilot-box window; 1,152 field-months",
+  "resolution": "~300 m; monthly",
+  "date_range": "2018-01 to 2025-12",
+  "credit": "FAO (2023). WaPOR v3: the FAO portal to monitor Water Productivity through Open-access of Remotely sensed derived data. CC BY 4.0.",
+  "access": "Cloud-optimised GeoTIFFs on Google Cloud Storage (fao-gismgr-wapor-3-data), windowed reads",
+  "message": "96 months; mean annual ET 1057 mm; sanity passed",
+  "action_needed": "",
+  "sanity": {
+    "checks": [
+      {
+        "variable": "monthly ET mm",
+        "n": 1152,
+        "n_finite": 1152,
+        "all_nan": false,
+        "expected_range": [
+          0,
+          320
+        ],
+        "min": 0.0,
+        "max": 163.0,
+        "mean": 88.0761,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "annual ET mm",
+        "n": 96,
+        "n_finite": 96,
+        "all_nan": false,
+        "expected_range": [
+          200,
+          2000
+        ],
+        "min": 685.6,
+        "max": 1287.4,
+        "mean": 1056.9135,
+        "in_range": true,
+        "passed": true
+      }
+    ],
+    "crs": "EPSG:4326"
+  },
+  "outputs": [
+    "et_field_monthly.parquet"
+  ],
+  "is_demo_data": false,
+  "notes": "A model estimate of water evaporated and transpired, not a measurement. One 300 m pixel is about the size of a sample block and covers several small fields. Unlike OpenET it is a single model, so no model spread is shown.",
+  "generated_at": "2026-11-14T20:37:52Z"
+}

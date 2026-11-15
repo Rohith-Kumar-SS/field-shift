@@ -1,0 +1,457 @@
+{
+ "corners": [
+  [
+   79.2,
+   10.99
+  ],
+  [
+   79.33,
+   10.99
+  ],
+  [
+   79.33,
+   10.86
+  ],
+  [
+   79.2,
+   10.86
+  ]
+ ],
+ "layers": [
+  {
+   "id": "ndvi_2018",
+   "group": "ndvi",
+   "year": 2018,
+   "file": "ndvi_2018.png",
+   "label": "Kuruvai-season greenness (Jul-Sep) 2018"
+  },
+  {
+   "id": "ndvi_b_2018",
+   "group": "ndvi_b",
+   "year": 2018,
+   "file": "ndvi_b_2018.png",
+   "label": "Samba-season greenness (Dec-Feb) 2018"
+  },
+  {
+   "id": "ndvi_2019",
+   "group": "ndvi",
+   "year": 2019,
+   "file": "ndvi_2019.png",
+   "label": "Kuruvai-season greenness (Jul-Sep) 2019"
+  },
+  {
+   "id": "ndvi_b_2019",
+   "group": "ndvi_b",
+   "year": 2019,
+   "file": "ndvi_b_2019.png",
+   "label": "Samba-season greenness (Dec-Feb) 2019"
+  },
+  {
+   "id": "ndvi_2020",
+   "group": "ndvi",
+   "year": 2020,
+   "file": "ndvi_2020.png",
+   "label": "Kuruvai-season greenness (Jul-Sep) 2020"
+  },
+  {
+   "id": "ndvi_b_2020",
+   "group": "ndvi_b",
+   "year": 2020,
+   "file": "ndvi_b_2020.png",
+   "label": "Samba-season greenness (Dec-Feb) 2020"
+  },
+  {
+   "id": "ndvi_2021",
+   "group": "ndvi",
+   "year": 2021,
+   "file": "ndvi_2021.png",
+   "label": "Kuruvai-season greenness (Jul-Sep) 2021"
+  },
+  {
+   "id": "ndvi_b_2021",
+   "group": "ndvi_b",
+   "year": 2021,
+   "file": "ndvi_b_2021.png",
+   "label": "Samba-season greenness (Dec-Feb) 2021"
+  },
+  {
+   "id": "ndvi_2022",
+   "group": "ndvi",
+   "year": 2022,
+   "file": "ndvi_2022.png",
+   "label": "Kuruvai-season greenness (Jul-Sep) 2022"
+  },
+  {
+   "id": "ndvi_b_2022",
+   "group": "ndvi_b",
+   "year": 2022,
+   "file": "ndvi_b_2022.png",
+   "label": "Samba-season greenness (Dec-Feb) 2022"
+  },
+  {
+   "id": "ndvi_2023",
+   "group": "ndvi",
+   "year": 2023,
+   "file": "ndvi_2023.png",
+   "label": "Kuruvai-season greenness (Jul-Sep) 2023"
+  },
+  {
+   "id": "ndvi_b_2023",
+   "group": "ndvi_b",
+   "year": 2023,
+   "file": "ndvi_b_2023.png",
+   "label": "Samba-season greenness (Dec-Feb) 2023"
+  },
+  {
+   "id": "ndvi_2024",
+   "group": "ndvi",
+   "year": 2024,
+   "file": "ndvi_2024.png",
+   "label": "Kuruvai-season greenness (Jul-Sep) 2024"
+  },
+  {
+   "id": "ndvi_b_2024",
+   "group": "ndvi_b",
+   "year": 2024,
+   "file": "ndvi_b_2024.png",
+   "label": "Samba-season greenness (Dec-Feb) 2024"
+  },
+  {
+   "id": "ndvi_2025",
+   "group": "ndvi",
+   "year": 2025,
+   "file": "ndvi_2025.png",
+   "label": "Kuruvai-season greenness (Jul-Sep) 2025"
+  },
+  {
+   "id": "ndvi_b_2025",
+   "group": "ndvi_b",
+   "year": 2025,
+   "file": "ndvi_b_2025.png",
+   "label": "Samba-season greenness (Dec-Feb) 2025"
+  },
+  {
+   "id": "low_cover",
+   "group": "low_cover",
+   "file": "low_cover.png",
+   "label": "Months with little green cover (all year)"
+  },
+  {
+   "id": "landcover",
+   "group": "landcover",
+   "file": "landcover.png",
+   "label": "Land cover"
+  },
+  {
+   "id": "slope",
+   "group": "slope",
+   "file": "slope.png",
+   "label": "Slope"
+  }
+ ],
+ "legends": {
+  "ndvi": {
+   "type": "ramp",
+   "title": "Kuruvai-season greenness (Jul-Sep): peak NDVI",
+   "short": "Kuruvai-season greenness (Jul-Sep)",
+   "min": "0 bare",
+   "max": "0.9 dense",
+   "colors": [
+    [
+     68,
+     1,
+     84
+    ],
+    [
+     72,
+     40,
+     120
+    ],
+    [
+     62,
+     74,
+     137
+    ],
+    [
+     49,
+     104,
+     142
+    ],
+    [
+     38,
+     130,
+     142
+    ],
+    [
+     31,
+     158,
+     137
+    ],
+    [
+     53,
+     183,
+     121
+    ],
+    [
+     109,
+     205,
+     89
+    ],
+    [
+     180,
+     222,
+     44
+    ],
+    [
+     253,
+     231,
+     37
+    ]
+   ],
+   "source": "Landsat 8/9 (USGS/NASA), 30 m"
+  },
+  "ndvi_b": {
+   "type": "ramp",
+   "title": "Samba-season greenness (Dec-Feb): peak NDVI",
+   "short": "Samba-season greenness (Dec-Feb)",
+   "min": "0 bare",
+   "max": "0.9 dense",
+   "colors": [
+    [
+     68,
+     1,
+     84
+    ],
+    [
+     72,
+     40,
+     120
+    ],
+    [
+     62,
+     74,
+     137
+    ],
+    [
+     49,
+     104,
+     142
+    ],
+    [
+     38,
+     130,
+     142
+    ],
+    [
+     31,
+     158,
+     137
+    ],
+    [
+     53,
+     183,
+     121
+    ],
+    [
+     109,
+     205,
+     89
+    ],
+    [
+     180,
+     222,
+     44
+    ],
+    [
+     253,
+     231,
+     37
+    ]
+   ],
+   "source": "Landsat 8/9 (USGS/NASA), 30 m"
+  },
+  "low_cover": {
+   "type": "ramp",
+   "title": "Months a year with little green cover (all year)",
+   "short": "Bare-looking months",
+   "min": "0",
+   "max": "7+",
+   "colors": [
+    [
+     68,
+     1,
+     84
+    ],
+    [
+     72,
+     40,
+     120
+    ],
+    [
+     62,
+     74,
+     137
+    ],
+    [
+     49,
+     104,
+     142
+    ],
+    [
+     38,
+     130,
+     142
+    ],
+    [
+     31,
+     158,
+     137
+    ],
+    [
+     53,
+     183,
+     121
+    ],
+    [
+     109,
+     205,
+     89
+    ],
+    [
+     180,
+     222,
+     44
+    ],
+    [
+     253,
+     231,
+     37
+    ]
+   ],
+   "source": "Landsat 8/9 monthly medians, NDVI below 0.25"
+  },
+  "landcover": {
+   "type": "classes",
+   "title": "Land cover (2021)",
+   "short": "Land cover",
+   "classes": [
+    {
+     "label": "Cropland",
+     "color": [
+      230,
+      159,
+      0
+     ]
+    },
+    {
+     "label": "Trees",
+     "color": [
+      0,
+      158,
+      115
+     ]
+    },
+    {
+     "label": "Grass and shrub",
+     "color": [
+      240,
+      228,
+      66
+     ]
+    },
+    {
+     "label": "Built-up",
+     "color": [
+      204,
+      121,
+      167
+     ]
+    },
+    {
+     "label": "Bare or sparse",
+     "color": [
+      187,
+      187,
+      187
+     ]
+    },
+    {
+     "label": "Water and wetland",
+     "color": [
+      86,
+      180,
+      233
+     ]
+    }
+   ],
+   "source": "ESA WorldCover 10 m (2021). It maps cropland, not which crop."
+  },
+  "slope": {
+   "type": "ramp",
+   "title": "Slope (%)",
+   "short": "Slope",
+   "min": "0",
+   "max": "6+",
+   "colors": [
+    [
+     68,
+     1,
+     84
+    ],
+    [
+     72,
+     40,
+     120
+    ],
+    [
+     62,
+     74,
+     137
+    ],
+    [
+     49,
+     104,
+     142
+    ],
+    [
+     38,
+     130,
+     142
+    ],
+    [
+     31,
+     158,
+     137
+    ],
+    [
+     53,
+     183,
+     121
+    ],
+    [
+     109,
+     205,
+     89
+    ],
+    [
+     180,
+     222,
+     44
+    ],
+    [
+     253,
+     231,
+     37
+    ]
+   ],
+   "source": "SRTM (NASA), smoothed over ~150 m"
+  }
+ },
+ "groups": [
+  "ndvi",
+  "ndvi_b",
+  "landcover",
+  "low_cover",
+  "slope"
+ ]
+}

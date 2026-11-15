@@ -1,0 +1,80 @@
+{
+  "source": "landsat",
+  "title": "Landsat 8/9 surface reflectance (NDVI, bare-soil index)",
+  "tier": "STRONG",
+  "status": "partial",
+  "fetched": "429 overpasses (scene cloud cover < 70 %), pilot-box window of bands blue, red, nir08, swir16, qa_pixel; 2,411 clear field observations",
+  "resolution": "30 m; about every 8 days from two satellites, more where two orbit paths overlap",
+  "date_range": "2018-01-01 to 2025-12-15",
+  "credit": "Landsat 8/9 Collection 2 Level-2 Science Products courtesy of the U.S. Geological Survey and NASA. Accessed through Microsoft Planetary Computer.",
+  "access": "STAC https://planetarycomputer.microsoft.com/api/stac/v1 (collection landsat-c2-l2), windowed COG reads",
+  "message": "429 overpasses, 2,411 field observations, median 173 per field; sanity passed; 1 overpass(es) failed to read",
+  "action_needed": "",
+  "sanity": {
+    "checks": [
+      {
+        "variable": "field-mean NDVI",
+        "n": 2411,
+        "n_finite": 2411,
+        "all_nan": false,
+        "expected_range": [
+          -0.2,
+          1.0
+        ],
+        "min": 0.0004,
+        "max": 0.8885,
+        "mean": 0.4893,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "field-mean bare-soil index",
+        "n": 2411,
+        "n_finite": 2411,
+        "all_nan": false,
+        "expected_range": [
+          -0.7,
+          0.7
+        ],
+        "min": -0.5288,
+        "max": 0.1989,
+        "mean": -0.1104,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "clear observations per field",
+        "n": 12,
+        "n_finite": 12,
+        "all_nan": false,
+        "expected_range": [
+          40,
+          5000
+        ],
+        "min": 167.0,
+        "max": 341.0,
+        "mean": 200.9167,
+        "in_range": true,
+        "passed": true
+      }
+    ],
+    "crs": "EPSG:32643",
+    "read_errors": [
+      "20221105: RasterioIOError"
+    ]
+  },
+  "outputs": [
+    "landsat_field_obs.parquet",
+    "rasters/ndvi_monthly_2018.tif",
+    "rasters/ndvi_monthly_2019.tif",
+    "rasters/ndvi_monthly_2020.tif",
+    "rasters/ndvi_monthly_2021.tif",
+    "rasters/ndvi_monthly_2022.tif",
+    "rasters/ndvi_monthly_2023.tif",
+    "rasters/ndvi_monthly_2024.tif",
+    "rasters/ndvi_monthly_2025.tif"
+  ],
+  "is_demo_data": false,
+  "notes": "Pixels flagged cloud, cloud shadow, cirrus or water by the Landsat QA band are dropped; an observation is kept only if at least 60 % of the field is clear. Snow-covered observations are kept but flagged, and excluded from greenness statistics. NDVI shows green cover, not soil health, and saturates in dense alfalfa.",
+  "generated_at": "2026-11-14T20:21:11Z"
+}

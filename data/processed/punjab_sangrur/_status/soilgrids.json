@@ -1,0 +1,100 @@
+{
+  "source": "soilgrids",
+  "title": "SoilGrids 2.0 soil properties (ISRIC, 250 m)",
+  "tier": "MUST",
+  "status": "ok",
+  "fetched": "8 properties x 3 depths for the pilot box; combined to 0-30 cm",
+  "resolution": "250 m global grid (model prediction)",
+  "date_range": "SoilGrids 2.0 (2020 release, static)",
+  "credit": "Poggio, L. et al. (2021). SoilGrids 2.0: producing soil information for the globe with quantified spatial uncertainty. SOIL 7: 217-240. ISRIC World Soil Information, CC BY 4.0.",
+  "access": "WCS https://maps.isric.org/mapserv (one small GeoTIFF per property and depth)",
+  "message": "soil table for 12 fields; textures: Clay loam, Loam; sanity passed",
+  "action_needed": "",
+  "sanity": {
+    "checks": [
+      {
+        "variable": "clay % (0-30 cm)",
+        "n": 12,
+        "n_finite": 12,
+        "all_nan": false,
+        "expected_range": [
+          1,
+          80
+        ],
+        "min": 26.626,
+        "max": 30.739,
+        "mean": 27.9852,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "sand % (0-30 cm)",
+        "n": 12,
+        "n_finite": 12,
+        "all_nan": false,
+        "expected_range": [
+          1,
+          98
+        ],
+        "min": 34.99,
+        "max": 38.831,
+        "mean": 37.1929,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "organic matter % (0-30 cm)",
+        "n": 12,
+        "n_finite": 12,
+        "all_nan": false,
+        "expected_range": [
+          0.1,
+          15
+        ],
+        "min": 1.277,
+        "max": 2.114,
+        "mean": 1.6979,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "pH (0-30 cm)",
+        "n": 12,
+        "n_finite": 12,
+        "all_nan": false,
+        "expected_range": [
+          4,
+          10.5
+        ],
+        "min": 7.82,
+        "max": 8.027,
+        "mean": 7.9639,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "K factor (derived)",
+        "n": 12,
+        "n_finite": 12,
+        "all_nan": false,
+        "expected_range": [
+          0.02,
+          0.69
+        ],
+        "min": 0.142,
+        "max": 0.164,
+        "mean": 0.155,
+        "in_range": true,
+        "passed": true
+      }
+    ],
+    "crs": "EPSG:4326"
+  },
+  "outputs": [
+    "field_soil.parquet",
+    "rasters/soil_*.tif"
+  ],
+  "is_demo_data": false,
+  "notes": "A global statistical model trained on soil profiles, far less detailed than a local survey: it cannot see one field's history. Salinity and sodicity are NOT mapped, although both matter in parts of Punjab and the Cauvery delta. A soil-health-card test is the real measurement.",
+  "generated_at": "2026-11-15T00:19:41Z"
+}

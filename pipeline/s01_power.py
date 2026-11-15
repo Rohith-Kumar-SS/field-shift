@@ -67,9 +67,9 @@ def main() -> None:
         json.dumps({"cells": cells, "field_to_cell": mapping}, indent=2), encoding="utf-8")
 
     checks = [
-        sanity_range(daily["T2M_MAX"], -35, 50, "T2M_MAX degC"),
-        sanity_range(daily["T2M_MIN"], -45, 35, "T2M_MIN degC"),
-        sanity_range(daily["PRECTOTCORR"], 0, 150, "PRECTOTCORR mm/day"),
+        sanity_range(daily["T2M_MAX"], -35, 52, "T2M_MAX degC"),
+        sanity_range(daily["T2M_MIN"], -45, 40, "T2M_MIN degC"),
+        sanity_range(daily["PRECTOTCORR"], 0, 400, "PRECTOTCORR mm/day"),
         sanity_range(daily["ALLSKY_SFC_SW_DWN"], 0, 40, "ALLSKY_SFC_SW_DWN MJ/m2/day"),
         sanity_range(daily["WS2M"], 0, 25, "WS2M m/s"),
     ]

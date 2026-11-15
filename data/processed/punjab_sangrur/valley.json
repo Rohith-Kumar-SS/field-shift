@@ -1,0 +1,228 @@
+{
+ "pilot": {
+  "id": "punjab_sangrur",
+  "name": "Sangrur-Barnala, Punjab, India",
+  "short": "Sangrur, Punjab",
+  "country": "India",
+  "tagline": "Rice-wheat on tubewells, where the water table drops every year",
+  "bbox": [
+   75.62,
+   30.22,
+   75.75,
+   30.35
+  ],
+  "centroid": [
+   75.685,
+   30.285
+  ],
+  "utm_epsg": 32643,
+  "kb": "punjab_sangrur",
+  "field_unit": "block",
+  "prefix": "PB",
+  "growing_months": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12
+  ],
+  "hot_day_c": 40,
+  "imperial": false
+ },
+ "power_cells": {
+  "P+75.625_+30.50": {
+   "cell_lon": 75.625,
+   "cell_lat": 30.5,
+   "query_lon": 75.6245,
+   "query_lat": 30.3468,
+   "grid_elevation_m": 233.38,
+   "units": {
+    "T2M": "C",
+    "T2M_MAX": "C",
+    "T2M_MIN": "C",
+    "T2MDEW": "C",
+    "RH2M": "%",
+    "WS2M": "m/s",
+    "ALLSKY_SFC_SW_DWN": "MJ/m^2/day",
+    "PRECTOTCORR": "mm/day",
+    "GWETTOP": "1",
+    "GWETROOT": "1",
+    "PS": "kPa"
+   }
+  },
+  "P+75.625_+30.00": {
+   "cell_lon": 75.625,
+   "cell_lat": 30.0,
+   "query_lon": 75.6862,
+   "query_lat": 30.2327,
+   "grid_elevation_m": 223.82,
+   "units": {
+    "T2M": "C",
+    "T2M_MAX": "C",
+    "T2M_MIN": "C",
+    "T2MDEW": "C",
+    "RH2M": "%",
+    "WS2M": "m/s",
+    "ALLSKY_SFC_SW_DWN": "MJ/m^2/day",
+    "PRECTOTCORR": "mm/day",
+    "GWETTOP": "1",
+    "GWETROOT": "1",
+    "PS": "kPa"
+   }
+  }
+ },
+ "groundwater": null,
+ "sources": [
+  {
+   "source": "fields",
+   "title": "Sample farm blocks (from ESA WorldCover cropland)",
+   "tier": "MUST",
+   "status": "ok",
+   "resolution": "10 m land cover, averaged to the 30 m analysis grid; blocks are 300 m x 300 m (9 ha)",
+   "date_range": "2021",
+   "credit": "Zanaga, D. et al. ESA WorldCover 10 m v200 (2022), CC BY 4.0. Accessed through Microsoft Planetary Computer.",
+   "message": "12 sample blocks, cropland share 93%-100%",
+   "action_needed": "",
+   "is_demo_data": false,
+   "notes": "No public map gives field boundaries or yearly crop types here, and fields average about one hectare. A block summarises the fields inside it; draw your own field for a closer look."
+  },
+  {
+   "source": "gpm_imerg",
+   "title": "GPM IMERG Final Run daily precipitation (GPM_3IMERGDF v07)",
+   "tier": "MUST",
+   "status": "ok",
+   "resolution": "0.1 degree (~9 x 11 km here); daily accumulation from half-hourly estimates",
+   "date_range": "2001-01-01 to 2025-09-30",
+   "credit": "Huffman, G. J. et al. (2023). GPM IMERG Final Precipitation L3 1 day 0.1 degree x 0.1 degree V07. NASA Goddard Earth Sciences Data and Information Services Center (GES DISC).",
+   "message": "9,038 days; 1 daily files failed; sanity passed",
+   "action_needed": "",
+   "is_demo_data": false,
+   "notes": "A satellite estimate calibrated to monthly gauge totals, not a rain gauge: it can miss or misplace small summer thunderstorms and struggles with snowfall over mountains. One cell covers many fields. The product's randomError field was not used: its scale in the daily files could not be interpreted reliably."
+  },
+  {
+   "source": "grace",
+   "title": "GRACE / GRACE-FO water storage anomaly (JPL mascons RL06.3)",
+   "tier": "OPTIONAL",
+   "status": "ok",
+   "resolution": "~300 km mascon, posted on a 0.5-degree grid; monthly, with gaps (2017-2018 between missions)",
+   "date_range": "2002-04 to 2026-09",
+   "credit": "Wiese, D. N. et al. (2023). JPL GRACE and GRACE-FO Mascon Ocean, Ice, and Hydrology Equivalent Water Height CRI Filtered RL06.3Mv04. NASA PO.DAAC.",
+   "message": "259 months; trend -3.81 cm of water per year (decreasing, p=0.0); sanity passed",
+   "action_needed": "",
+   "is_demo_data": false,
+   "notes": "Total water storage (groundwater + soil moisture + surface water + snow) for a region about 300 km across, relative to the 2004-2009 mean. Not a groundwater level and not a field value. Gain factors were not applied, so the size of the trend is indicative."
+  },
+  {
+   "source": "imd",
+   "title": "IMD gridded daily rainfall and temperature (station based)",
+   "tier": "OPTIONAL",
+   "status": "ok",
+   "resolution": "rain 0.25 degree (~27 km); temperature 1 degree (~100 km); daily",
+   "date_range": "2001-01-01 to 2025-12-31",
+   "credit": "Pai, D. S. et al. (2014). Development of a new high spatial resolution (0.25 x 0.25 degree) long period (1901-2010) daily gridded rainfall data set over India. Mausam 65: 1-18. Srivastava, A. K., Rajeevan, M. & Kshirsagar, S. R. (2009). Development of a high resolution daily gridded temperature data set (1969-2005) for the Indian region. Atmospheric Science Letters 10: 249-254. India Meteorological Department, Pune. Read with the imdlib package (Nandi & Patel 2022).",
+   "message": "2 cell(s); mean annual rain 447 mm (NASA POWER: 625 mm); NASA POWER afternoons differ from the stations by -2.1 degC on average (largest month -3.2): days above 40 degC 70 -> 31 a year; sanity passed",
+   "action_needed": "",
+   "is_demo_data": false,
+   "notes": "Interpolated from stations, so it is ground truth at the stations and an estimate between them. One rain cell (27 km) or temperature cell (100 km) covers the whole pilot box, so it corrects the average level of the weather record, not field-to-field differences."
+  },
+  {
+   "source": "landsat",
+   "title": "Landsat 8/9 surface reflectance (NDVI, bare-soil index)",
+   "tier": "STRONG",
+   "status": "partial",
+   "resolution": "30 m; about every 8 days from two satellites, more where two orbit paths overlap",
+   "date_range": "2018-01-01 to 2025-12-15",
+   "credit": "Landsat 8/9 Collection 2 Level-2 Science Products courtesy of the U.S. Geological Survey and NASA. Accessed through Microsoft Planetary Computer.",
+   "message": "429 overpasses, 2,411 field observations, median 173 per field; sanity passed; 1 overpass(es) failed to read",
+   "action_needed": "",
+   "is_demo_data": false,
+   "notes": "Pixels flagged cloud, cloud shadow, cirrus or water by the Landsat QA band are dropped; an observation is kept only if at least 60 % of the field is clear. Snow-covered observations are kept but flagged, and excluded from greenness statistics. NDVI shows green cover, not soil health, and saturates in dense alfalfa."
+  },
+  {
+   "source": "modis",
+   "title": "MODIS/Terra NDVI 250 m (MOD13Q1 v061)",
+   "tier": "OPTIONAL",
+   "status": "ok",
+   "resolution": "231.7 m (MODIS sinusoidal grid); 16-day composites",
+   "date_range": "2000-12-18 to 2025-12-19",
+   "credit": "Didan, K. (2021). MODIS/Terra Vegetation Indices 16-Day L3 Global 250m SIN Grid V061. NASA EOSDIS LP DAAC. Accessed through Microsoft Planetary Computer.",
+   "message": "6,368 field-composites, median 531 usable per field; 1 composites failed; sanity passed",
+   "action_needed": "",
+   "is_demo_data": false,
+   "notes": "A 300 m block holds only one or two MODIS pixels, so this record describes the block and its neighbours together. Monsoon cloud removes many composites between June and September."
+  },
+  {
+   "source": "nasa_power",
+   "title": "NASA POWER daily agroclimatology",
+   "tier": "MUST",
+   "status": "ok",
+   "resolution": "0.5 x 0.625 degree (MERRA-2 meteorology), 1 x 1 degree (CERES solar); daily",
+   "date_range": "1991-01-01 to 2025-12-31",
+   "credit": "NASA Langley Research Center (LaRC) POWER Project, funded through the NASA Earth Science/Applied Science Program. Public domain.",
+   "message": "25,568 daily rows for 2 cell(s); sanity passed",
+   "action_needed": "",
+   "is_demo_data": false,
+   "notes": "Gridded reanalysis, not an on-farm weather station. Temperatures are later adjusted from the grid-cell mean elevation to each field's elevation with a standard 6.5 degC/km lapse rate (documented in engine/agromet.py)."
+  },
+  {
+   "source": "smap",
+   "title": "SMAP enhanced L3 soil moisture (SPL3SMP_E, 9 km)",
+   "tier": "MUST",
+   "status": "ok",
+   "resolution": "9 km EASE-Grid 2.0 (interpolated from ~33 km radiometer footprints); a retrieval every 2-3 days",
+   "date_range": "2015-04-01 to 2025-12-31",
+   "credit": "O'Neill, P. E. et al. SMAP Enhanced L3 Radiometer Global and Polar Grid Daily 9 km EASE-Grid Soil Moisture. NASA National Snow and Ice Data Center DAAC, Boulder, Colorado.",
+   "message": "2,817 retrieval days, 1,161 cell-months; 0 daily files failed; sanity passed",
+   "action_needed": "",
+   "is_demo_data": false,
+   "notes": "Top ~5 cm of soil only, and each 9 km cell is mostly desert shrubland with the irrigated pivots mixed in: it shows whether the valley is wetter or drier than usual, not the moisture under one pivot. Anomaly z = (month mean - that calendar month's 2015-2025 mean) / standard deviation; months with under 5 retrieval days are left blank."
+  },
+  {
+   "source": "soilgrids",
+   "title": "SoilGrids 2.0 soil properties (ISRIC, 250 m)",
+   "tier": "MUST",
+   "status": "ok",
+   "resolution": "250 m global grid (model prediction)",
+   "date_range": "SoilGrids 2.0 (2020 release, static)",
+   "credit": "Poggio, L. et al. (2021). SoilGrids 2.0: producing soil information for the globe with quantified spatial uncertainty. SOIL 7: 217-240. ISRIC World Soil Information, CC BY 4.0.",
+   "message": "soil table for 12 fields; textures: Clay loam, Loam; sanity passed",
+   "action_needed": "",
+   "is_demo_data": false,
+   "notes": "A global statistical model trained on soil profiles, far less detailed than a local survey: it cannot see one field's history. Salinity and sodicity are NOT mapped, although both matter in parts of Punjab and the Cauvery delta. A soil-health-card test is the real measurement."
+  },
+  {
+   "source": "srtm",
+   "title": "SRTM 1 arc-second elevation (SRTMGL1 v003)",
+   "tier": "OPTIONAL",
+   "status": "ok",
+   "resolution": "1 arc-second (~30 m); acquired February 2000 (static)",
+   "date_range": "2000-02-11 to 2000-02-22",
+   "credit": "NASA JPL (2013). NASA Shuttle Radar Topography Mission Global 1 arc second. NASA EOSDIS Land Processes DAAC.",
+   "message": "elevation 228-239 m, field tilt 0.5-2.2 % (plane fit; raw-pixel slope reads 5.1 % because of radar noise); sanity passed",
+   "action_needed": "",
+   "is_demo_data": false,
+   "notes": "Radar elevation has a few metres of vertical noise: taken pixel by pixel it reads as 2-4 % slope on flat ground. The app uses each field's overall tilt (plane fit), which averages that noise out. The survey predates any land levelling done since 2000."
+  },
+  {
+   "source": "wapor",
+   "title": "FAO WaPOR v3 actual evapotranspiration (300 m)",
+   "tier": "STRONG",
+   "status": "ok",
+   "resolution": "~300 m; monthly",
+   "date_range": "2018-01 to 2025-12",
+   "credit": "FAO (2023). WaPOR v3: the FAO portal to monitor Water Productivity through Open-access of Remotely sensed derived data. CC BY 4.0.",
+   "message": "96 months; mean annual ET 891 mm; sanity passed",
+   "action_needed": "",
+   "is_demo_data": false,
+   "notes": "A model estimate of water evaporated and transpired, not a measurement. One 300 m pixel is about the size of a sample block and covers several small fields. Unlike OpenET it is a single model, so no model spread is shown."
+  }
+ ],
+ "any_demo_data": false
+}

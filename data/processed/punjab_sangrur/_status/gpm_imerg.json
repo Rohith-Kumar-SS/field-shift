@@ -1,0 +1,58 @@
+{
+  "source": "gpm_imerg",
+  "title": "GPM IMERG Final Run daily precipitation (GPM_3IMERGDF v07)",
+  "tier": "MUST",
+  "status": "ok",
+  "fetched": "9,038 daily files, 4 cells of 0.1 degree over the pilot area",
+  "resolution": "0.1 degree (~9 x 11 km here); daily accumulation from half-hourly estimates",
+  "date_range": "2001-01-01 to 2025-09-30",
+  "credit": "Huffman, G. J. et al. (2023). GPM IMERG Final Precipitation L3 1 day 0.1 degree x 0.1 degree V07. NASA Goddard Earth Sciences Data and Information Services Center (GES DISC).",
+  "access": "NASA cloud OPeNDAP (opendap.earthdata.nasa.gov), spatial subset per daily file, Earthdata bearer token; needs the GES DISC data-use agreement accepted on the account",
+  "message": "9,038 days; 1 daily files failed; sanity passed",
+  "action_needed": "",
+  "sanity": {
+    "checks": [
+      {
+        "variable": "daily precipitation mm",
+        "n": 36152,
+        "n_finite": 36152,
+        "all_nan": false,
+        "expected_range": [
+          0,
+          600
+        ],
+        "min": 0.0,
+        "max": 116.135,
+        "mean": 1.7241,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "annual total mm",
+        "n": 96,
+        "n_finite": 96,
+        "all_nan": false,
+        "expected_range": [
+          50,
+          4000
+        ],
+        "min": 362.04,
+        "max": 990.605,
+        "mean": 614.4725,
+        "in_range": true,
+        "passed": true
+      }
+    ],
+    "grid": "0.1 degree lon/lat",
+    "failed_days": [
+      "2011-01-06"
+    ]
+  },
+  "outputs": [
+    "imerg_cell_daily.parquet",
+    "field_imerg_cell.json"
+  ],
+  "is_demo_data": false,
+  "notes": "A satellite estimate calibrated to monthly gauge totals, not a rain gauge: it can miss or misplace small summer thunderstorms and struggles with snowfall over mountains. One cell covers many fields. The product's randomError field was not used: its scale in the daily files could not be interpreted reliably.",
+  "generated_at": "2026-11-14T20:38:39Z"
+}

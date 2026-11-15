@@ -182,7 +182,7 @@ def main() -> None:
     fields = load_fields()
     data, failed = fetch_all()
     if data.empty:
-        raise SourceError("IMERG returned no data for the pilot valley")
+        raise SourceError("IMERG returned no data for the pilot area")
     data["date"] = pd.to_datetime(data["date"])
     data["cell_id"] = "G" + data["lon_idx"].astype(str) + "_" + data["lat_idx"].astype(str)
     data = data.sort_values(["cell_id", "date"])
@@ -195,13 +195,13 @@ def main() -> None:
     (PROCESSED / "field_imerg_cell.json").write_text(json.dumps(mapping, indent=2), encoding="utf-8")
 
     annual = data.groupby(["cell_id", data["date"].dt.year])["precip_mm"].sum()
-    checks = [sanity_range(data["precip_mm"].dropna(), 0, 200, "daily precipitation mm"),
-              sanity_range(annual[annual.index.get_level_values(1) < 2025], 80, 700, "annual total mm")]
+    checks = [sanity_range(data["precip_mm"].dropna(), 0, 600, "daily precipitation mm"),
+              sanity_range(annual[annual.index.get_level_values(1) < 2025], 50, 4000, "annual total mm")]
     ok = all(c["passed"] for c in checks) and set(mapping.values()) <= set(data["cell_id"])
     write_status(
         SOURCE, status="ok" if (ok and len(failed) < 60) else "partial", title=TITLE, tier=TIER,
         fetched=f"{data['date'].nunique():,} daily files, {data['cell_id'].nunique()} cells of 0.1 degree "
-                "over the valley",
+                "over the pilot area",
         resolution="0.1 degree (~9 x 11 km here); daily accumulation from half-hourly estimates",
         date_range=f"{data['date'].min():%Y-%m-%d} to {data['date'].max():%Y-%m-%d}",
         credit="Huffman, G. J. et al. (2023). GPM IMERG Final Precipitation L3 1 day 0.1 degree x 0.1 "

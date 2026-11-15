@@ -1,0 +1,86 @@
+{
+  "source": "srtm",
+  "title": "SRTM 1 arc-second elevation (SRTMGL1 v003)",
+  "tier": "OPTIONAL",
+  "status": "ok",
+  "fetched": "tiles N30E075; resampled (bilinear) to the 30 m analysis grid; slope by Horn's 3x3 method on a ~150 m smoothed surface, plus a plane fit per field",
+  "resolution": "1 arc-second (~30 m); acquired February 2000 (static)",
+  "date_range": "2000-02-11 to 2000-02-22",
+  "credit": "NASA JPL (2013). NASA Shuttle Radar Topography Mission Global 1 arc second. NASA EOSDIS Land Processes DAAC.",
+  "access": "LP DAAC cloud archive (data.lpdaac.earthdatacloud.nasa.gov), Earthdata bearer token",
+  "message": "elevation 228-239 m, field tilt 0.5-2.2 % (plane fit; raw-pixel slope reads 5.1 % because of radar noise); sanity passed",
+  "action_needed": "",
+  "sanity": {
+    "checks": [
+      {
+        "variable": "field elevation m",
+        "n": 12,
+        "n_finite": 12,
+        "all_nan": false,
+        "expected_range": [
+          -50,
+          5000
+        ],
+        "min": 228.4,
+        "max": 238.7,
+        "mean": 233.6833,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "field tilt % (plane fit)",
+        "n": 12,
+        "n_finite": 12,
+        "all_nan": false,
+        "expected_range": [
+          0,
+          8
+        ],
+        "min": 0.46,
+        "max": 2.22,
+        "mean": 1.1317,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "field mean slope % (smoothed)",
+        "n": 12,
+        "n_finite": 12,
+        "all_nan": false,
+        "expected_range": [
+          0,
+          15
+        ],
+        "min": 0.64,
+        "max": 1.63,
+        "mean": 1.0808,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "pilot-box elevation m",
+        "n": 203764,
+        "n_finite": 203764,
+        "all_nan": false,
+        "expected_range": [
+          -50,
+          6000
+        ],
+        "min": 215.8749,
+        "max": 254.4886,
+        "mean": 233.8328,
+        "in_range": true,
+        "passed": true
+      }
+    ],
+    "crs": "EPSG:32643"
+  },
+  "outputs": [
+    "rasters/elevation_m.tif",
+    "rasters/slope_pct.tif",
+    "field_terrain.parquet"
+  ],
+  "is_demo_data": false,
+  "notes": "Radar elevation has a few metres of vertical noise: taken pixel by pixel it reads as 2-4 % slope on flat ground. The app uses each field's overall tilt (plane fit), which averages that noise out. The survey predates any land levelling done since 2000.",
+  "generated_at": "2026-11-14T19:40:59Z"
+}

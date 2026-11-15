@@ -1,0 +1,97 @@
+{
+  "source": "imd",
+  "title": "IMD gridded daily rainfall and temperature (station based)",
+  "tier": "OPTIONAL",
+  "status": "ok",
+  "fetched": "daily rainfall and Tmax/Tmin 2001-2025 for 2 cell(s) under the pilot fields",
+  "resolution": "rain 0.25 degree (~27 km); temperature 1 degree (~100 km); daily",
+  "date_range": "2001-01-01 to 2025-12-31",
+  "credit": "Pai, D. S. et al. (2014). Development of a new high spatial resolution (0.25 x 0.25 degree) long period (1901-2010) daily gridded rainfall data set over India. Mausam 65: 1-18. Srivastava, A. K., Rajeevan, M. & Kshirsagar, S. R. (2009). Development of a high resolution daily gridded temperature data set (1969-2005) for the Indian region. Atmospheric Science Letters 10: 249-254. India Meteorological Department, Pune. Read with the imdlib package (Nandi & Patel 2022).",
+  "access": "imdpune.gov.in yearly binary grids via imdlib",
+  "message": "2 cell(s); mean annual rain 447 mm (NASA POWER: 625 mm); NASA POWER afternoons differ from the stations by -2.1 degC on average (largest month -3.2): days above 40 degC 70 -> 31 a year; sanity passed",
+  "action_needed": "",
+  "sanity": {
+    "checks": [
+      {
+        "variable": "daily rainfall mm",
+        "n": 18262,
+        "n_finite": 18262,
+        "all_nan": false,
+        "expected_range": [
+          0,
+          600
+        ],
+        "min": 0.0,
+        "max": 164.6844,
+        "mean": 1.3438,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "annual rainfall mm",
+        "n": 50,
+        "n_finite": 50,
+        "all_nan": false,
+        "expected_range": [
+          100,
+          4000
+        ],
+        "min": 107.4793,
+        "max": 985.1293,
+        "mean": 490.7927,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "tmax degC",
+        "n": 18262,
+        "n_finite": 18262,
+        "all_nan": false,
+        "expected_range": [
+          5,
+          50
+        ],
+        "min": 12.0663,
+        "max": 46.31,
+        "mean": 30.7927,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "tmin degC",
+        "n": 18262,
+        "n_finite": 18262,
+        "all_nan": false,
+        "expected_range": [
+          -5,
+          38
+        ],
+        "min": -0.17,
+        "max": 30.783,
+        "mean": 17.0449,
+        "in_range": true,
+        "passed": true
+      }
+    ],
+    "example_field_check": {
+      "annual_precip_power_mm": 625,
+      "annual_precip_ground_mm": 447,
+      "power_grid_elevation_m": 233.38,
+      "field_elevation_m": 232.1,
+      "temperature_cell": "30.5N 75.5E",
+      "mean_tmax_delta_c": -2.08,
+      "mean_tmin_delta_c": -1.95,
+      "largest_tmax_delta_c": -3.23,
+      "hot_day_c": 40.0,
+      "hot_days_power": 70.5,
+      "hot_days_ground": 30.9
+    }
+  },
+  "outputs": [
+    "ground_daily.parquet",
+    "power_bias.json"
+  ],
+  "is_demo_data": false,
+  "notes": "Interpolated from stations, so it is ground truth at the stations and an estimate between them. One rain cell (27 km) or temperature cell (100 km) covers the whole pilot box, so it corrects the average level of the weather record, not field-to-field differences.",
+  "generated_at": "2026-11-15T00:17:05Z"
+}

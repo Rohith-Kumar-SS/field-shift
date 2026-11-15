@@ -1,0 +1,289 @@
+# Rotation knowledge base: Cauvery delta, Thanjavur district, Tamil Nadu, India.
+#
+# Same rules as the other regions: every value is either from a cited reference or a class
+# score assigned by this project with the reasoning beside it (`why:`). Class scores (0-1)
+# are NOT measurements and are NOT calibrated locally; each one is a prompt for review by
+# Tamil Nadu Agricultural University (TNAU) extension staff, the Tamil Nadu Rice Research
+# Institute at Aduthurai, or a Krishi Vigyan Kendra.
+#
+# A rotation year runs January-December: samba and thaladi rice planted in
+# August-October appear as [.., 12] in one year and [1, 2] in the next.
+
+version: "1.0"
+region_note: >
+  Written for canal-irrigated paddy land of the old Cauvery delta (about 30 m above sea
+  level, heavy clay soils, roughly 1,000-1,200 mm of rain of which about half falls in
+  October-December). Seasons follow TNAU's Crop Production Guide: kuruvai (June-September),
+  samba (August-January), thaladi (October-February) and rice-fallow crops afterwards.
+
+settings:
+  existing: choose
+  existing_default: kuruvai_thaladi_pulse
+  pest_model: annual
+  stand_crops: []
+  water_reference: {label: "kuruvai + thaladi rice", strategy: kuruvai_thaladi_pulse}
+  heavy_rain_mm: 50
+  windy_ms: 4.5
+  hot_day_c: 38
+  heat_days_full: 30
+  equipment:
+    - {id: puddler, label: "Tractor and puddler, or transplanting labour"}
+    - {id: combine, label: "Combine harvester (hired)"}
+    - {id: drill, label: "Seed drill or ridger for dry-sown crops"}
+  default_equipment: [puddler, combine]
+  market:
+    - {id: established_only, label: "Only crops with assured buying (paddy procurement centres)"}
+    - {id: some, label: "Open to regulated-market crops with price risk"}
+    - {id: open, label: "Willing to find new buyers"}
+
+references:
+  FAO56: "Allen, R.G., Pereira, L.S., Raes, D., Smith, M. (1998). Crop evapotranspiration. FAO Irrigation and Drainage Paper 56 (Tables 11, 12, 17, 22)."
+  FAO33: "Doorenbos, J., Kassam, A.H. (1979). Yield response to water. FAO Irrigation and Drainage Paper 33; updated in Steduto et al. (2012), FAO Paper 66."
+  FAO29: "Ayers, R.S., Westcot, D.W. (1985). Water quality for agriculture. FAO Irrigation and Drainage Paper 29, Table 4 (crop salt tolerance)."
+  TNAU: "Tamil Nadu Agricultural University, Coimbatore. Crop Production Guide (Agriculture) and the TNAU Agritech Portal: seasons, varieties and durations for the Cauvery delta zone."
+  TRRI: "Tamil Nadu Rice Research Institute, Aduthurai (TNAU): rice-fallow pulses and rice-fallow cotton recommendations for the delta."
+  METTUR: "Water Resources Department, Government of Tamil Nadu: the Mettur (Stanley) reservoir is customarily opened for delta irrigation on 12 June; in years of low storage the opening is delayed and the kuruvai crop is cut back."
+  SARE: "Clark, A. (ed.) (2007). Managing Cover Crops Profitably, 3rd edition. SARE Handbook 9 (legume nitrogen, green manures)."
+  PROJECT: "Class score assigned by this project from the general agronomy cited alongside it; not locally calibrated."
+
+criteria:
+  water: {label: "Save water", plain: "Less irrigation water needed across the whole year.", default_weight: 25, basis: "data + crop table"}
+  cover: {label: "Keep soil covered", plain: "Crop or residue on the ground when the heavy rains arrive.", default_weight: 10, basis: "data + crop calendar"}
+  nitrogen: {label: "Nitrogen from legumes", plain: "Nitrogen fixed by pulses and green manure and used by the rice.", default_weight: 10, basis: "crop table"}
+  organic_matter: {label: "Build organic matter", plain: "Roots, residue and green manure returned to the soil.", default_weight: 10, basis: "crop table + soil baseline"}
+  pest_break: {label: "Break pest cycles", plain: "A break from rice after rice, with other plant families in between.", default_weight: 10, basis: "crop table"}
+  income: {label: "Income and assured sale", plain: "Crop value relative to two rice crops, given your water and how you sell.", default_weight: 25, basis: "crop table (no local prices)"}
+  resilience: {label: "Heat and dry-spell resilience", plain: "Crops that cope if canal water comes late or the monsoon fails.", default_weight: 5, basis: "data + crop table"}
+  feasibility: {label: "Easy to carry out", plain: "Fits your season, machinery and experience.", default_weight: 5, basis: "data + your inputs"}
+
+crops:
+  rice_kuruvai:
+    label: "Kuruvai rice (short duration, June-September)"
+    short: "Kuruvai rice"
+    family: "Poaceae"
+    group: "flooded rice"
+    months: [6, 7, 8, 9]
+    kc: {6: 0.70, 7: 1.15, 8: 1.20, 9: 0.75}
+    cover: {6: 0.35, 7: 0.80, 8: 0.95, 9: 0.75, 10: 0.25}
+    traits: {n_score: 0.0, n_credit_kg_ha: [0, 0], om_score: 0.35, root_depth_m: 0.6, heat_limit_c: 38, drought_tolerance: 0.10, ky: 1.2, frost_free_days_needed: 0, value_score: 0.50, market: "assured", equipment: ["puddler", "combine"], establishment_risk: 0.30, plantings: 1, salt_threshold_ds_m: 3.0, salt_class: "moderately sensitive", extra_water_mm: 500}
+    why:
+      kc: "FAO56 Table 12: rice Kc 1.05 initial, 1.20 mid-season, 0.90-0.60 late; a 105-110 day crop transplanted in June (TNAU)."
+      cover: "Flooded canopy June-September; stubble, soon puddled again, in October."
+      drought_tolerance: "Grown in the hot, dry south-west monsoon months almost entirely on canal water: if the Mettur opening is late or flows are low, this crop fails or is not planted (METTUR)."
+      establishment_risk: "Depends on the reservoir opening on time (METTUR)."
+      value_score: "With the thaladi crop this makes up the reference income (0.50 + 0.50 = 1.0). Bought at direct purchase centres at the support price."
+      extra_water_mm: "Puddling and keeping the field flooded take roughly 400-600 mm beyond what the crop transpires; in heavy delta clay less seeps away than in lighter soils (PROJECT estimate from FAO56 chapter on paddy)."
+      salt_threshold_ds_m: "FAO29 Table 4: paddy rice 3.0 dS/m."
+  rice_thaladi:
+    label: "Thaladi rice (after kuruvai, October-February)"
+    short: "Thaladi rice"
+    family: "Poaceae"
+    group: "flooded rice"
+    months: [1, 2, 10, 11, 12]
+    kc: {10: 0.70, 11: 1.15, 12: 1.20, 1: 1.00, 2: 0.45}
+    cover: {10: 0.35, 11: 0.80, 12: 0.95, 1: 0.90, 2: 0.50}
+    traits: {n_score: 0.0, n_credit_kg_ha: [0, 0], om_score: 0.35, root_depth_m: 0.6, heat_limit_c: 38, drought_tolerance: 0.30, ky: 1.2, frost_free_days_needed: 0, value_score: 0.50, market: "assured", equipment: ["puddler", "combine"], establishment_risk: 0.20, plantings: 1, salt_threshold_ds_m: 3.0, salt_class: "moderately sensitive", extra_water_mm: 400}
+    why:
+      kc: "FAO56 Table 12 rice values on a 130-135 day crop transplanted in October (TNAU)."
+      drought_tolerance: "Grown through the north-east monsoon, so rain supplies much of its water; the risk is flooding in November-December rather than drought."
+      establishment_risk: "Young seedlings can be submerged by cyclonic rain in November."
+      value_score: "Half of the reference income; assured purchase."
+      extra_water_mm: "As for kuruvai rice, a little less because the season is wet and cool (PROJECT)."
+  rice_samba:
+    label: "Samba rice (long duration, August-January)"
+    short: "Samba rice"
+    family: "Poaceae"
+    group: "flooded rice"
+    months: [1, 8, 9, 10, 11, 12]
+    kc: {8: 0.60, 9: 1.10, 10: 1.20, 11: 1.20, 12: 1.05, 1: 0.55}
+    cover: {8: 0.30, 9: 0.75, 10: 0.95, 11: 0.95, 12: 0.95, 1: 0.60}
+    traits: {n_score: 0.0, n_credit_kg_ha: [0, 0], om_score: 0.40, root_depth_m: 0.6, heat_limit_c: 38, drought_tolerance: 0.30, ky: 1.2, frost_free_days_needed: 0, value_score: 0.65, market: "assured", equipment: ["puddler", "combine"], establishment_risk: 0.15, plantings: 1, salt_threshold_ds_m: 3.0, salt_class: "moderately sensitive", extra_water_mm: 500}
+    why:
+      kc: "FAO56 Table 12 rice values on a 150-160 day crop planted in August-September (TNAU)."
+      drought_tolerance: "Most of its season falls in the north-east monsoon; needs canal water mainly to establish."
+      value_score: "One long crop yields more than either short crop but less than two (PROJECT class score). Assured purchase."
+      om_score: "A long crop leaves more root and stubble than a short one."
+  blackgram:
+    label: "Rice-fallow blackgram or greengram"
+    short: "Rice-fallow pulse"
+    family: "Fabaceae"
+    group: "legume"
+    irrigated: false
+    months: [2, 3, 4]
+    kc: {2: 0.50, 3: 1.00, 4: 0.50}
+    cover: {2: 0.40, 3: 0.75, 4: 0.50}
+    traits: {n_score: 0.5, n_credit_kg_ha: [15, 40], om_score: 0.25, root_depth_m: 0.7, heat_limit_c: 40, drought_tolerance: 0.60, ky: 1.0, frost_free_days_needed: 0, value_score: 0.15, market: "established", equipment: [], establishment_risk: 0.35, plantings: 1, salt_threshold_ds_m: null, salt_class: "sensitive"}
+    why:
+      kc: "FAO56 Table 12: green gram and similar pulses Kc 0.4 initial, 1.05 mid-season, 0.6-0.35 late. Broadcast into the standing rice a week before harvest and grown on the moisture left in the soil, with no irrigation (TRRI), so it adds nothing to irrigation need."
+      n_score: "A legume: fixes nitrogen and leaves a modest amount for the next rice crop (SARE; TRRI)."
+      value_score: "Low and variable yields (often 300-500 kg/ha) but almost no cost."
+      establishment_risk: "Depends entirely on residual moisture and on January-February rain; yellow mosaic virus is common (TRRI)."
+  cotton_fallow:
+    label: "Rice-fallow cotton (February-June)"
+    short: "Rice-fallow cotton"
+    family: "Malvaceae"
+    group: "broadleaf"
+    months: [2, 3, 4, 5, 6]
+    kc: {2: 0.35, 3: 0.70, 4: 1.10, 5: 1.15, 6: 0.60}
+    cover: {2: 0.15, 3: 0.45, 4: 0.80, 5: 0.90, 6: 0.60, 7: 0.25}
+    traits: {n_score: 0.0, n_credit_kg_ha: [0, 0], om_score: 0.30, root_depth_m: 1.2, heat_limit_c: 40, drought_tolerance: 0.65, ky: 0.85, frost_free_days_needed: 0, value_score: 0.40, market: "established", equipment: ["drill"], establishment_risk: 0.35, plantings: 1, salt_threshold_ds_m: 7.7, salt_class: "tolerant"}
+    why:
+      kc: "FAO56 Table 12: cotton Kc 0.35 initial, 1.15-1.20 mid-season, 0.70-0.50 late, on the short rice-fallow season (TRRI)."
+      drought_tolerance: "Deep taproot (Ky 0.85, FAO33), but it grows through the hottest, driest months on borewell water."
+      value_score: "A real cash crop in the delta, sold through regulated markets at prices that swing."
+      establishment_risk: "Sown into wet rice stubble; summer showers and sucking pests decide the crop."
+      salt_threshold_ds_m: "FAO29 Table 4: cotton 7.7 dS/m."
+  millet:
+    label: "Kuruvai-season maize or millet (instead of rice)"
+    short: "Maize or millet"
+    family: "Poaceae"
+    group: "warm-season cereal"
+    months: [6, 7, 8, 9]
+    kc: {6: 0.40, 7: 0.90, 8: 1.10, 9: 0.55}
+    cover: {6: 0.20, 7: 0.65, 8: 0.90, 9: 0.70, 10: 0.30}
+    traits: {n_score: 0.0, n_credit_kg_ha: [0, 0], om_score: 0.45, root_depth_m: 1.2, heat_limit_c: 38, drought_tolerance: 0.60, ky: 1.1, frost_free_days_needed: 0, value_score: 0.28, market: "established", equipment: ["drill"], establishment_risk: 0.30, plantings: 1, salt_threshold_ds_m: 1.7, salt_class: "moderately sensitive"}
+    why:
+      kc: "FAO56 Table 12: maize Kc mid-season 1.20, millet 1.00; an in-between value is used for a 100-110 day crop with no puddling or standing water."
+      drought_tolerance: "Can be raised with a few irrigations from a borewell when canal water is late (TNAU alternative-crop advice for delayed-water years)."
+      value_score: "Worth clearly less than a rice crop and has no assured buyer (PROJECT class score)."
+      establishment_risk: "Heavy delta clay drains slowly; these crops suffer if the field floods."
+      salt_threshold_ds_m: "FAO29 Table 4: maize 1.7 dS/m."
+  green_manure:
+    label: "Green manure (daincha or sunn hemp, ploughed in)"
+    short: "Green manure"
+    family: "Fabaceae"
+    group: "legume"
+    months: [5, 6, 7]
+    kc: {5: 0.50, 6: 0.90, 7: 0.60}
+    cover: {5: 0.30, 6: 0.80, 7: 0.60}
+    traits: {n_score: 0.7, n_credit_kg_ha: [40, 80], om_score: 0.80, root_depth_m: 1.0, heat_limit_c: 42, drought_tolerance: 0.60, ky: 1.0, frost_free_days_needed: 0, value_score: 0.0, market: "none", equipment: [], establishment_risk: 0.20, plantings: 1, salt_threshold_ds_m: null, salt_class: "tolerant (daincha)"}
+    why:
+      kc: "Treated as a legume canopy (FAO56 Table 12 pulses) for the 45-50 days before it is ploughed in."
+      n_score: "A 45-day stand ploughed in before transplanting supplies roughly 40-80 kg N/ha to the rice (TNAU; SARE)."
+      om_score: "All of its growth goes back into the soil."
+      value_score: "No sale crop: its return is the fertiliser saved and the soil built."
+      drought_tolerance: "Needs summer showers or one or two irrigations to establish."
+  fallow:
+    label: "Fallow (no crop)"
+    short: "Fallow"
+    family: "none"
+    group: "none"
+    months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    kc: {}
+    cover: {1: 0.2, 2: 0.2, 3: 0.15, 4: 0.15, 5: 0.15, 6: 0.15, 7: 0.15, 8: 0.2, 9: 0.2, 10: 0.25, 11: 0.25, 12: 0.25}
+    traits: {n_score: 0.0, n_credit_kg_ha: [0, 0], om_score: 0.0, root_depth_m: 0.0, heat_limit_c: 60, drought_tolerance: 1.0, ky: 0.0, frost_free_days_needed: 0, value_score: 0.0, market: "none", equipment: [], establishment_risk: 0.0, plantings: 0, salt_threshold_ds_m: null, salt_class: "not applicable"}
+    why:
+      kc: "No irrigation is applied."
+      cover: "Stubble and weeds only."
+
+strategies:
+  kuruvai_thaladi_pulse:
+    name: "Kuruvai rice, thaladi rice and a rice-fallow pulse"
+    short: "Double rice + pulse"
+    existing_option: true
+    summary: "Two rice crops a year (June-September and October-February), then blackgram on leftover moisture."
+    tags: [existing_like]
+    years:
+      - [{crop: rice_thaladi, months: [1, 2]}, {crop: blackgram, months: [2, 3, 4]}, {crop: rice_kuruvai, months: [6, 7, 8, 9]}, {crop: rice_thaladi, months: [10, 11, 12]}]
+    benefits:
+      - "Two assured rice crops: the highest income when canal water arrives on time."
+      - "A pulse at almost no cost adds a little nitrogen and food."
+      - "The system the delta's canals, labour and markets are built around."
+    risks:
+      - "The kuruvai crop depends on the Mettur reservoir opening on time and on borewells when it does not."
+      - "Rice after rice builds up stem borer, leaf folder and brown planthopper, and puddles the soil twice a year."
+      - "Thaladi seedlings can be drowned by cyclonic rain in November."
+    info_gaps:
+      - "How often canal water reached your village by mid-June in the last ten years."
+      - "Whether you have a borewell, and its water quality."
+    verify:
+      - "Ask the Public Works Department section office or the water users' association about this year's release schedule."
+      - "Ask TNAU extension or the KVK which short-duration variety suits a late start."
+  samba_pulse:
+    name: "One samba rice crop and a rice-fallow pulse"
+    short: "Samba rice + pulse"
+    existing_option: true
+    summary: "A single long-duration rice crop from August to January, then blackgram; the land rests in summer."
+    tags: [reduces_water, adds_break, resilient_to_late_water]
+    years:
+      - [{crop: rice_samba, months: [1]}, {crop: blackgram, months: [2, 3, 4]}, {crop: rice_samba, months: [8, 9, 10, 11, 12]}]
+    benefits:
+      - "Needs canal water only from August, so a late Mettur opening matters much less."
+      - "Most of the crop's water comes from the north-east monsoon."
+      - "Half the puddling and a long break from rice pests."
+    risks:
+      - "One rice crop earns clearly less than two."
+      - "The field lies bare through the hot months from April to July."
+      - "The whole year rides on one crop and on the north-east monsoon."
+    info_gaps:
+      - "Whether summer showers are enough here to grow a green manure in the gap."
+    verify:
+      - "Compare your own income from single and double cropping over wet and dry years."
+  samba_pulse_greenmanure:
+    name: "Samba rice, rice-fallow pulse and a summer green manure"
+    short: "Samba + pulse + green manure"
+    summary: "As above, with daincha or sunn hemp grown in May-July and ploughed in before the samba crop."
+    tags: [reduces_water, adds_break, adds_legume, builds_om, adds_cover, resilient_to_late_water]
+    years:
+      - [{crop: rice_samba, months: [1]}, {crop: blackgram, months: [2, 3, 4]}, {crop: green_manure, months: [5, 6, 7]}, {crop: rice_samba, months: [8, 9, 10, 11, 12]}]
+    benefits:
+      - "Two legumes a year: the most nitrogen and organic matter of the options here."
+      - "The soil is covered in early summer instead of lying bare."
+      - "Still needs canal water only from August."
+    risks:
+      - "The green manure needs summer showers or a borewell irrigation to establish."
+      - "One rice crop earns less than two; the green manure itself earns nothing."
+      - "Ploughing in has to be done on time, about ten days before transplanting."
+    info_gaps:
+      - "Whether daincha or sunn hemp seed is available and subsidised this year."
+    verify:
+      - "Ask the agriculture extension centre about green-manure seed supply."
+      - "Use a soil test to see how much fertiliser the green manure lets you cut."
+  millet_thaladi_pulse:
+    name: "Maize or millet in kuruvai, then thaladi rice and a pulse"
+    short: "Millet + rice + pulse"
+    summary: "A dry-sown maize or millet replaces the kuruvai rice; thaladi rice and blackgram follow."
+    tags: [reduces_water, new_family, resilient_to_late_water, keeps_income]
+    years:
+      - [{crop: rice_thaladi, months: [1, 2]}, {crop: blackgram, months: [2, 3, 4]}, {crop: millet, months: [6, 7, 8, 9]}, {crop: rice_thaladi, months: [10, 11, 12]}]
+    benefits:
+      - "The June-September crop no longer needs standing water or an on-time canal."
+      - "Keeps one assured rice crop and the land in use all year."
+      - "A different plant group breaks the rice-after-rice pest cycle."
+    risks:
+      - "Heavy delta clay drains slowly: maize and millets suffer if the field floods."
+      - "No assured buyer at a support price for the kuruvai-season crop."
+      - "Needs dry-land sowing equipment that paddy farms may not own."
+    info_gaps:
+      - "Whether your field drains well enough for an upland crop in July-August."
+      - "Local buyers and prices for maize or millets."
+    verify:
+      - "Ask TNAU extension about the alternative-crop package offered in delayed-water years."
+      - "Try it on your best-drained field first."
+  samba_cotton:
+    name: "Samba rice and rice-fallow cotton"
+    short: "Samba + cotton"
+    summary: "A single samba rice crop, then cotton from February to June on borewell water."
+    tags: [new_family, keeps_income, salt_tolerant]
+    years:
+      - [{crop: rice_samba, months: [1]}, {crop: cotton_fallow, months: [2, 3, 4, 5, 6]}, {crop: rice_samba, months: [8, 9, 10, 11, 12]}]
+    benefits:
+      - "A cash crop in the months when the canals are dry."
+      - "A deep-rooted crop from a different family; tolerates salty water better than rice."
+      - "Only one puddling a year."
+    risks:
+      - "Cotton needs irrigation through the hottest months, from a borewell: it shifts water use to groundwater."
+      - "Prices and yields swing; sucking pests are common."
+      - "No pulse in the rotation, so no legume nitrogen."
+    info_gaps:
+      - "Borewell depth, yield and salinity."
+      - "Last season's cotton price at the regulated market."
+    verify:
+      - "Check borewell water quality before relying on it for cotton."
+      - "Ask the Tamil Nadu Rice Research Institute about rice-fallow cotton varieties and sowing dates."
+
+always_verify:
+  - "This year's Mettur opening date and the canal turn schedule for your village."
+  - "A soil test (organic carbon, pH, salinity, nutrients), especially near the coast and at the tail end of canals."
+  - "Which crops are being bought at support prices this season, and where."
+  - "Varieties and sowing windows in the current TNAU Crop Production Guide."

@@ -17,33 +17,29 @@ from typing import Any
 import requests
 from dotenv import load_dotenv
 
-ROOT = Path(__file__).resolve().parents[1]
-RAW = ROOT / "data" / "raw"
-PROCESSED = ROOT / "data" / "processed"
-STATUS_DIR = PROCESSED / "_status"
-OVERLAYS = PROCESSED / "overlays"
+from .regions import DEFAULT_REGION, REGIONS
 
+ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / ".env")
 
 # ---------------------------------------------------------------------------
-# Pilot region: Diamond Valley, Eureka County, Nevada (irrigated alfalfa pivots)
+# Which pilot region this process works on (see pipeline/regions.py)
 # ---------------------------------------------------------------------------
-PILOT = {
-    "id": "diamond_valley_nv",
-    "name": "Diamond Valley, Eureka County, Nevada",
-    # west, south, east, north (WGS84). Core of the irrigated valley floor; kept under
-    # 50,000 acres so one OpenET field-boundary query covers it.
-    "bbox": [-116.08, 39.62, -115.95, 39.75],
-    "centroid": [-116.015, 39.685],
-    "utm_epsg": 32611,  # UTM zone 11N
-    "timezone": "America/Los_Angeles",
-}
+REGION_ID = os.environ.get("FIELD_SHIFT_REGION", DEFAULT_REGION)
+if REGION_ID not in REGIONS:
+    raise SystemExit(f"Unknown region '{REGION_ID}'. Choose from: {', '.join(REGIONS)}")
+PILOT = REGIONS[REGION_ID]
+
+RAW = ROOT / "data" / "raw" / REGION_ID
+PROCESSED = ROOT / "data" / "processed" / REGION_ID
+STATUS_DIR = PROCESSED / "_status"
+OVERLAYS = PROCESSED / "overlays"
 
 # Analysis windows
 CLIMATE_START, CLIMATE_END = 1991, 2025          # NASA POWER long record (trends)
 FIELD_EO_START, FIELD_EO_END = 2018, 2025        # field-scale satellite record
 CDL_START, CDL_END = 2008, 2025                  # crop history
-GROWING_MONTHS = [4, 5, 6, 7, 8, 9, 10]          # April-October
+GROWING_MONTHS = PILOT["growing_months"]
 
 
 class SourceError(RuntimeError):

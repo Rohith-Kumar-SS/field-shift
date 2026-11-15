@@ -1,0 +1,23 @@
+{
+  "source": "overlays",
+  "title": "Map overlays (PNG)",
+  "tier": "MUST",
+  "status": "ok",
+  "fetched": "18 overlay images",
+  "resolution": "25 m Web Mercator",
+  "date_range": "",
+  "credit": "Derived by this project from Landsat, the crop or land-cover map and SRTM.",
+  "access": "pipeline/s30_overlays.py",
+  "message": "18 overlays written",
+  "action_needed": "",
+  "sanity": {
+    "passed": true
+  },
+  "outputs": [
+    "overlays/*.png",
+    "overlays/manifest.json"
+  ],
+  "is_demo_data": false,
+  "notes": "",
+  "generated_at": "2026-11-15T00:20:00Z"
+}

@@ -1,0 +1,58 @@
+{
+  "cells": {
+    "P+75.625_+30.50": {
+      "cell_lon": 75.625,
+      "cell_lat": 30.5,
+      "query_lon": 75.6245,
+      "query_lat": 30.3468,
+      "grid_elevation_m": 233.38,
+      "units": {
+        "T2M": "C",
+        "T2M_MAX": "C",
+        "T2M_MIN": "C",
+        "T2MDEW": "C",
+        "RH2M": "%",
+        "WS2M": "m/s",
+        "ALLSKY_SFC_SW_DWN": "MJ/m^2/day",
+        "PRECTOTCORR": "mm/day",
+        "GWETTOP": "1",
+        "GWETROOT": "1",
+        "PS": "kPa"
+      }
+    },
+    "P+75.625_+30.00": {
+      "cell_lon": 75.625,
+      "cell_lat": 30.0,
+      "query_lon": 75.6862,
+      "query_lat": 30.2327,
+      "grid_elevation_m": 223.82,
+      "units": {
+        "T2M": "C",
+        "T2M_MAX": "C",
+        "T2M_MIN": "C",
+        "T2MDEW": "C",
+        "RH2M": "%",
+        "WS2M": "m/s",
+        "ALLSKY_SFC_SW_DWN": "MJ/m^2/day",
+        "PRECTOTCORR": "mm/day",
+        "GWETTOP": "1",
+        "GWETROOT": "1",
+        "PS": "kPa"
+      }
+    }
+  },
+  "field_to_cell": {
+    "PB-01": "P+75.625_+30.50",
+    "PB-02": "P+75.625_+30.50",
+    "PB-03": "P+75.625_+30.50",
+    "PB-04": "P+75.625_+30.50",
+    "PB-05": "P+75.625_+30.50",
+    "PB-06": "P+75.625_+30.50",
+    "PB-07": "P+75.625_+30.50",
+    "PB-08": "P+75.625_+30.50",
+    "PB-09": "P+75.625_+30.50",
+    "PB-10": "P+75.625_+30.00",
+    "PB-11": "P+75.625_+30.00",
+    "PB-12": "P+75.625_+30.00"
+  }
+}

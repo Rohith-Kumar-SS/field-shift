@@ -20,9 +20,9 @@ import pandas as pd
 from .agromet import LAPSE_RATE, et0_fao56, frost_dates
 
 BASELINE = (1996, 2025)          # 30-year window for "normal" conditions
-HEAT_THRESHOLDS = (30, 32, 35, 36, 38)
+HEAT_THRESHOLDS = (30, 32, 35, 36, 38, 40, 42)
 WINDY_MS = 4.5                   # daily-mean wind at 2 m; ~6.5 m/s at 10 m, enough to move loose sand
-HEAVY_RAIN_MM = 10.0             # heavy for a 250 mm/yr cold desert
+HEAVY_RAIN_MM = 10.0             # heavy for a 250 mm/yr cold desert; monsoon regions set 50 in their settings
 MONTHS = list(range(1, 13))
 
 
@@ -108,7 +108,8 @@ def prepare_daily(daily: pd.DataFrame, lat: float, field_elev_m: float, grid_ele
     return out
 
 
-def summarise(prep: pd.DataFrame, baseline: tuple[int, int] = BASELINE) -> dict:
+def summarise(prep: pd.DataFrame, baseline: tuple[int, int] = BASELINE, heavy_rain_mm: float = HEAVY_RAIN_MM,
+              windy_ms: float = WINDY_MS, hot_day_c: float = 32) -> dict:
     """30-year normals and yearly series used by the indicators and the scoring engine."""
     b = prep[(prep["year"] >= baseline[0]) & (prep["year"] <= baseline[1])]
     n_years = b["year"].nunique()
@@ -138,7 +139,8 @@ def summarise(prep: pd.DataFrame, baseline: tuple[int, int] = BASELINE) -> dict:
         tmean=("tmean", "mean"), precip=("precip", "sum"), et0=("et0", "sum"),
         days_over_32=("tmax", lambda s: int((s > 32).sum())),
         days_over_35=("tmax", lambda s: int((s > 35).sum())),
-        heavy_rain_days=("precip", lambda s: int((s >= HEAVY_RAIN_MM).sum())),
+        hot_days=("tmax", lambda s: int((s > hot_day_c).sum())),
+        heavy_rain_days=("precip", lambda s: int((s >= heavy_rain_mm).sum())),
         max_daily_precip=("precip", "max"), n=("tmax", "size")).reset_index()
     annual = annual[annual["n"] >= 360].drop(columns="n")
     grow = prep[prep["month"].between(4, 10)].groupby("year").agg(
@@ -154,8 +156,11 @@ def summarise(prep: pd.DataFrame, baseline: tuple[int, int] = BASELINE) -> dict:
         "tmax_month": {m: round(float(by_m["tmax"].mean().get(m, np.nan)), 1) for m in MONTHS},
         "tmin_month": {m: round(float(by_m["tmin"].mean().get(m, np.nan)), 1) for m in MONTHS},
         "wind_month": {m: round(float(by_m["wind"].mean().get(m, np.nan)), 2) for m in MONTHS},
-        "windy_days_month": per_year_mean(b["wind"] >= WINDY_MS),
-        "heavy_rain_days_month": per_year_mean(b["precip"] >= HEAVY_RAIN_MM),
+        "windy_days_month": per_year_mean(b["wind"] >= windy_ms),
+        "heavy_rain_days_month": per_year_mean(b["precip"] >= heavy_rain_mm),
+        "heavy_rain_mm": heavy_rain_mm, "hot_day_c": hot_day_c,
+        "hot_days_month": per_year_mean(b["tmax"] > hot_day_c),
+        "hot_days": round(float((b["tmax"] > hot_day_c).sum() / max(n_years, 1)), 1),
         "frost_days_month": per_year_mean(b["tmin"] <= 0.0),
         "heat_days_month": heat,
         "et0_annual": round(float(monthly_et0.sum()), 0),
@@ -185,3 +190,10 @@ def heat_days_in(months: list[int], limit_c: float, summary: dict) -> float:
     thr = max([t for t in thresholds if t <= limit_c], default=thresholds[0])
     table = summary["heat_days_month"][thr]
     return float(sum(table[m] for m in months))
+
+
+def summarise_for(prep: pd.DataFrame, kb: dict) -> dict:
+    """summarise() with the region's own thresholds (heavy-rain day, windy day, hot day)."""
+    st = kb.get("settings", {})
+    return summarise(prep, heavy_rain_mm=float(st.get("heavy_rain_mm", HEAVY_RAIN_MM)),
+                     windy_ms=float(st.get("windy_ms", WINDY_MS)), hot_day_c=float(st.get("hot_day_c", 32)))

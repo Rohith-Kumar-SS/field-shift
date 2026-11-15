@@ -4,8 +4,8 @@ import json
 
 import pytest
 
-from engine.climate import Scenario, prepare_daily, season_fit, summarise
-from engine.knowledge import fill_residue, validate, year_profiles
+from engine.climate import Scenario, prepare_daily, season_fit, summarise, summarise_for
+from engine.knowledge import fill_residue, load_kb, regions, validate, year_profiles
 from engine.scoring import (hazard_weights, normalise_weights, pest_metrics, score_field, season_fraction,
                             water_score, water_year)
 from tests.conftest import make_history
@@ -188,12 +188,12 @@ def test_missing_data_lowers_confidence_and_is_named(ctx, kb):
     full = by_id(score_field(ctx, kb))["existing"]["confidence"]
     bare = copy.deepcopy({k: v for k, v in ctx.items() if k != "power"})
     bare["power"] = ctx["power"]
-    bare["sources"].update(openet=False, landsat=False, smap=False)
+    bare["sources"].update(et=False, landsat=False, smap=False)
     bare["is_custom"] = True
     res = by_id(score_field(bare, kb))["existing"]
     assert res["confidence"]["score"] < full["score"]
     assert any("Missing for this field" in r for r in res["confidence"]["reasons"])
-    assert any("No OpenET record" in g for g in res["info_gaps"])
+    assert any("No satellite water-use record" in g for g in res["info_gaps"])
     assert res["criteria"]["water"]["confidence"] == "low"
 
 
@@ -215,3 +215,80 @@ def test_the_tool_never_tells_the_farmer_what_to_plant(ctx, kb):
         assert phrase not in text
     assert res["statement"].startswith("Under your priorities")
     assert "does not replace" in res["disclaimer"]
+
+
+# ---------------------------------------------------------------------------
+# Other regions: annual cropping, chosen (not observed) existing rotation
+# ---------------------------------------------------------------------------
+def test_every_region_has_a_valid_knowledge_base():
+    assert set(regions()) >= {"diamond_valley_nv", "punjab_sangrur", "cauvery_delta_tn"}
+    for rid in regions():
+        k = load_kb(rid)
+        assert validate(k) == [], rid
+        assert sum(c["default_weight"] for c in k["criteria"].values()) == 100
+        assert len(k["strategies"]) + (1 if k["settings"]["existing"] == "from_history" else 0) >= 3
+        if k["settings"]["existing"] == "choose":
+            options = [s for s in k["strategies"].values() if s.get("existing_option")]
+            assert len(options) >= 2 and k["settings"]["existing_default"] in k["strategies"]
+            assert k["strategies"][k["settings"]["existing_default"]].get("existing_option")
+
+
+def test_chosen_rotation_becomes_the_existing_one(ctx_india, kb_pb):
+    res = score_field(ctx_india, kb_pb)
+    s = by_id(res)
+    assert res["existing"]["mode"] == "choose" and res["existing"]["chosen"] == "rice_wheat"
+    assert s["rice_wheat"]["is_existing"] and sum(x["is_existing"] for x in res["strategies"]) == 1
+    assert len(res["strategies"]) >= 3
+    other = by_id(score_field(ctx_india, kb_pb, existing_id="cotton_wheat"))
+    assert other["cotton_wheat"]["is_existing"] and not other["rice_wheat"]["is_existing"]
+    # the reference for the water score is fixed by the region, not by the farmer's choice
+    assert other["rice_wheat"]["water"]["irrigation_mm"] == s["rice_wheat"]["water"]["irrigation_mm"]
+    for x in res["strategies"]:
+        assert 0 <= x["total"] <= 1 and x["why"] and x["risks"] and x["verify"] and x["info_gaps"]
+    json.dumps(res)
+
+
+def test_rice_wheat_is_the_thirstiest_and_legume_breaks_score_on_pests(ctx_india, kb_pb):
+    s = by_id(score_field(ctx_india, kb_pb, {"water": 100}))
+    assert s["rice_wheat"]["water"]["irrigation_mm"] > s["maize_wheat_moong"]["water"]["irrigation_mm"]
+    assert s["rice_wheat"]["scores"]["water"] == pytest.approx(0.0, abs=0.02)   # it is the reference
+    assert s["maize_wheat_moong"]["rank"] < s["rice_wheat"]["rank"]
+    assert s["rice_wheat_moong"]["scores"]["nitrogen"] > s["rice_wheat"]["scores"]["nitrogen"]
+    assert s["maize_wheat_moong"]["scores"]["pest_break"] > s["rice_wheat"]["scores"]["pest_break"]
+    assert any("groundwater" in w["text"].lower() or "water stor" in w["text"].lower()
+               for w in s["maize_wheat_moong"]["why"])
+
+
+def test_annual_pest_model(kb_pb):
+    mono = pest_metrics(kb_pb["strategies"]["rice_wheat"]["years"], kb_pb)
+    div = pest_metrics(kb_pb["strategies"]["maize_wheat_moong"]["years"], kb_pb)
+    assert mono["model"] == "annual" and mono["crops_per_year"] == 2
+    assert div["crops_per_year"] == 3 and len(div["groups"]) > len(mono["groups"])
+    assert 0 <= mono["score"] < div["score"] <= 1
+
+
+def test_heat_threshold_follows_the_region(daily_monsoon, kb_pb, kb):
+    prep = prepare_daily(daily_monsoon, 30.3, 232, 232)
+    pb, nv = summarise_for(prep, kb_pb), summarise_for(prep, kb)
+    assert pb["hot_day_c"] == 40 and nv["hot_day_c"] == 32
+    assert 0 < pb["hot_days"] < nv["hot_days"]
+    assert pb["heavy_rain_mm"] == 50 and pb["frost_free_median"] >= 300
+
+
+def test_cauvery_rotations_score(ctx_india, kb_tn):
+    ctx = {**ctx_india, "lat": 10.9, "lon": 79.3, "elevation_m": 20.0, "climate_correction": "imd",
+           "phenology": {"median_seasons": 3.0, "usual_peak_months": [2, 8, 12], "n_years": 10}}
+    res = score_field(ctx, kb_tn)
+    s = by_id(res)
+    assert res["existing"]["chosen"] == "kuruvai_thaladi_pulse" and len(s) >= 4
+    # one green season a year seen from space -> the single-rice rotation becomes the starting point
+    one = score_field({**ctx, "phenology": {"median_seasons": 1.0, "usual_peak_months": [12], "n_years": 10}}, kb_tn)
+    assert one["existing"]["chosen"] == "samba_pulse" and "1 green season" in one["existing"]["assumptions"][0]
+    # the farmer's own choice always wins, and a mismatch with the satellite record is pointed out
+    own = score_field({**ctx, "phenology": {"median_seasons": 1.0, "usual_peak_months": [12], "n_years": 10}},
+                      kb_tn, existing_id="kuruvai_thaladi_pulse")
+    assert own["existing"]["chosen"] == "kuruvai_thaladi_pulse" and "Check that it matches" in own["existing"]["assumptions"][0]
+    assert s["samba_pulse"]["water"]["irrigation_mm"] < s["kuruvai_thaladi_pulse"]["water"]["irrigation_mm"]
+    text = json.dumps(res).lower()
+    for phrase in ("you should plant", "we recommend planting", "plant crop", "you must", "best crop is"):
+        assert phrase not in text

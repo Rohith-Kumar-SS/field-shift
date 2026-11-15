@@ -1,7 +1,7 @@
 """Cross-platform task runner (the Makefile forwards to this).
 
     python tasks.py setup   install Python and Node dependencies
-    python tasks.py data    run the data pipeline (cached; safe to re-run)
+    python tasks.py data    run the data pipeline (cached; safe to re-run); add --region <id|all>
     python tasks.py dev     start the API (port 8360) and the web app (port 5180)
     python tasks.py test    run the unit tests
     python tasks.py build   build the web app for production
@@ -46,6 +46,7 @@ def setup() -> None:
 
 
 def data(args: list[str]) -> None:
+    """`data` = default region; `data --region all`; `data --region punjab_sangrur smap landsat`."""
     run([python(), "-m", "pipeline.run_all", *args])
 
 

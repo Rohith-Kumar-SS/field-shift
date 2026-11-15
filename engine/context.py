@@ -1,6 +1,6 @@
 """Fuse every data source into (a) the context the scoring engine needs and (b) the
-evidence panels the app shows. Used by the pipeline for the pilot fields and by the
-backend for a field the user draws, so both follow exactly the same rules.
+evidence panels the app shows, for one field. The same function serves every region;
+sources that do not exist somewhere are recorded as missing, never invented.
 """
 from __future__ import annotations
 
@@ -11,8 +11,9 @@ import numpy as np
 import pandas as pd
 
 from .agromet import monthly_zscore, theil_sen_trend
-from .climate import MONTHS, Scenario, field_precip, prepare_daily, summarise
+from .climate import MONTHS, Scenario, field_precip, prepare_daily, summarise_for
 from .history import interpret_history
+from .phenology import history_from_pattern, yearly_pattern
 from .scoring import hazard_weights
 
 LOW_COVER_NDVI = 0.25
@@ -20,7 +21,8 @@ SOIL_KEYS = ["muname", "surface_texture", "om_pct_0_30", "clay_pct_0_30", "sand_
              "ph_0_30", "ec_dsm_0_30", "sar_0_30", "ksat_um_s_0_30", "kwfact_surface",
              "wind_erodibility_group", "wind_erodibility_index", "aws_0_100cm_cm", "drainage_class",
              "hydrologic_group", "dominant_mapunit_share", "n_mapunits", "caco3_pct_0_30",
-             "bulk_density_0_30", "irrigated_capability_class", "soil_coverage_fraction"]
+             "bulk_density_0_30", "irrigated_capability_class", "soil_coverage_fraction",
+             "cec_cmol_kg_0_30", "nitrogen_g_kg_0_30", "derived"]
 
 
 def clean(obj: Any) -> Any:
@@ -60,11 +62,11 @@ def landsat_monthly(obs: pd.DataFrame) -> pd.DataFrame:
     return m.join(snow, how="outer").reset_index()
 
 
-def peak_ndvi_by_year(obs: pd.DataFrame) -> dict[int, float]:
-    """90th percentile of clear, snow-free NDVI in May-September, per year."""
+def peak_ndvi_by_year(obs: pd.DataFrame, months: tuple[int, int] = (5, 9)) -> dict[int, float]:
+    """90th percentile of clear, snow-free NDVI in the main season, per year."""
     if obs is None or obs.empty:
         return {}
-    o = obs[(obs["snow_frac"] < 0.2) & obs["date"].dt.month.between(5, 9)]
+    o = obs[(obs["snow_frac"] < 0.2) & obs["date"].dt.month.between(*months)]
     out = {}
     for year, g in o.groupby(o["date"].dt.year):
         if len(g) >= 3:
@@ -87,16 +89,33 @@ def low_cover_calendar(monthly: pd.DataFrame) -> dict:
     return out
 
 
+def flood_calendar(obs: pd.DataFrame | None) -> dict | None:
+    """Share of clear observations per month that look flooded (water index above greenness).
+
+    The paddy-transplanting signal of Xiao et al. (2005): LSWI + 0.05 >= NDVI. A hint that
+    rice is grown, not a crop map.
+    """
+    if obs is None or obs.empty or "lswi" not in obs.columns or obs["lswi"].notna().sum() < 20:
+        return None
+    o = obs.dropna(subset=["lswi"]).assign(month=lambda d: d["date"].dt.month, year=lambda d: d["date"].dt.year)
+    o["flooded"] = (o["lswi"] + 0.05 >= o["ndvi"]) & (o["ndvi"] < 0.55)
+    by_month = {int(m): round(float(g["flooded"].mean()), 2) for m, g in o.groupby("month")}
+    yearly = o.groupby("year")["flooded"].any()
+    top = sorted(by_month, key=lambda m: -by_month[m])[:2]
+    return {"share_by_month": by_month, "years_with_signal": int(yearly.sum()), "years": int(len(yearly)),
+            "peak_months": sorted(m for m in top if by_month[m] >= 0.3)}
+
+
 # ---------------------------------------------------------------------------
-# OpenET: anchor the textbook water demand to this field's own record
+# Anchor the textbook water demand to the field's own satellite record (crop-map regions)
 # ---------------------------------------------------------------------------
-def water_calibration(openet: pd.DataFrame | None, history: list[dict], prep: pd.DataFrame, kb: dict) -> dict:
-    """Median of (OpenET May-Sep ET) / (alfalfa Kc x reference ET) over this field's alfalfa years."""
-    if openet is None or openet.empty:
-        return {"available": False, "factor": 1.0, "reason": "No OpenET record for this field."}
+def water_calibration(et: pd.DataFrame | None, history: list[dict], prep: pd.DataFrame, kb: dict) -> dict:
+    """Median of (satellite May-Sep ET) / (alfalfa Kc x reference ET) over this field's alfalfa years."""
+    if et is None or et.empty:
+        return {"available": False, "factor": 1.0, "reason": "No satellite water-use record for this field."}
     kc = kb["crops"]["alfalfa"]["kc"]
     et0 = prep.groupby(["year", "month"])["et0"].sum()
-    o = openet.assign(year=openet["date"].dt.year, month=openet["date"].dt.month)
+    o = et.assign(year=et["date"].dt.year, month=et["date"].dt.month)
     rows = []
     for rec in history:
         if rec["crop"] != "alfalfa" or rec["doubtful"]:
@@ -111,7 +130,7 @@ def water_calibration(openet: pd.DataFrame | None, history: list[dict], prep: pd
                      "textbook_mm": round(model), "ratio": round(float(g["et_mm"].sum()) / model, 3)})
     if len(rows) < 2:
         return {"available": False, "factor": 1.0, "years": [r["year"] for r in rows], "rows": rows,
-                "reason": "Fewer than two clean alfalfa years with OpenET data on this field."}
+                "reason": "Fewer than two clean alfalfa years with satellite water-use data on this field."}
     raw = float(np.median([r["ratio"] for r in rows]))
     return {"available": True, "factor": round(float(np.clip(raw, 0.6, 1.15)), 3), "raw_ratio": round(raw, 3),
             "years": [r["year"] for r in rows], "rows": rows,
@@ -121,12 +140,12 @@ def water_calibration(openet: pd.DataFrame | None, history: list[dict], prep: pd
 
 
 # ---------------------------------------------------------------------------
-# Groundwater near the field
+# Long-term water: wells where they exist, GRACE where they do not
 # ---------------------------------------------------------------------------
 def groundwater_near(lon: float, lat: float, wells: pd.DataFrame | None, levels: pd.DataFrame | None,
                      radius_km: float = 12.0) -> dict:
     if wells is None or len(wells) == 0 or levels is None:
-        return {"available": False}
+        return {"available": False, "kind": "wells"}
     w = wells.copy()
     k = 111.32
     w["dist_km"] = np.hypot((w["lon"] - lon) * k * math.cos(math.radians(lat)), (w["lat"] - lat) * k)
@@ -142,67 +161,106 @@ def groundwater_near(lon: float, lat: float, wells: pd.DataFrame | None, levels:
                        "first_year": int(r["first_year"]), "last_year": int(r["last_year"]),
                        "points": [{"year": int(y), "depth_m": round(float(d), 2)}
                                   for y, d in zip(ann["year"], ann["depth_m"])]})
-    out = {"available": len(trend) > 0, "radius_km": radius_km, "n_wells": int(len(near)),
-           "n_wells_trend": int(len(trend)),
-           "n_deepening": int(((trend["trend_m_per_decade_since_1990"] > 0)
-                               & (trend["trend_p_value"] < 0.05)).sum()),
-           "n_rising": int(((trend["trend_m_per_decade_since_1990"] < 0)
-                            & (trend["trend_p_value"] < 0.05)).sum()),
-           "median_m_per_decade": (round(float(trend["trend_m_per_decade_since_1990"].median()), 2)
-                                   if len(trend) else None),
-           "wells": series}
-    return out
+    return {"available": len(trend) > 0, "kind": "wells", "radius_km": radius_km, "n_wells": int(len(near)),
+            "n_wells_trend": int(len(trend)),
+            "n_deepening": int(((trend["trend_m_per_decade_since_1990"] > 0) & (trend["trend_p_value"] < 0.05)).sum()),
+            "n_rising": int(((trend["trend_m_per_decade_since_1990"] < 0) & (trend["trend_p_value"] < 0.05)).sum()),
+            "median_m_per_decade": (round(float(trend["trend_m_per_decade_since_1990"].median()), 2)
+                                    if len(trend) else None),
+            "wells": series}
+
+
+def grace_summary(grace: pd.DataFrame | None) -> dict:
+    if grace is None or grace.empty:
+        return {"available": False, "kind": "grace"}
+    g = grace.sort_values("date")
+    ann = g.groupby(g["date"].dt.year)["lwe_cm"].agg(["mean", "size"])
+    ann = ann[ann["size"] >= 6]
+    tr = theil_sen_trend(ann.index, ann["mean"].values)
+    per_year = None if tr["slope_per_decade"] is None else round(tr["slope_per_decade"] / 10.0, 2)
+    return {"available": True, "kind": "grace", "trend_cm_per_year": per_year, "significant": tr["significant"],
+            "p_value": tr["p_value"], "direction": tr["direction"],
+            "from_year": int(ann.index.min()), "to_year": int(ann.index.max()),
+            "monthly": [{"date": d.strftime("%Y-%m"), "lwe_cm": round(float(v), 2),
+                         "unc_cm": None if pd.isna(u) else round(float(u), 2)}
+                        for d, v, u in zip(g["date"], g["lwe_cm"], g["uncertainty_cm"])],
+            "annual": [{"year": int(y), "lwe_cm": round(float(v), 2)} for y, v in ann["mean"].items()]}
 
 
 # ---------------------------------------------------------------------------
 # Main builder
 # ---------------------------------------------------------------------------
 def build(meta: dict, kb: dict, *, power_daily: pd.DataFrame, grid_elevation_m: float,
-          soil: dict | None, terrain: dict | None, cdl_rows: list[dict],
+          soil: dict | None, terrain: dict | None, cdl_rows: list[dict] | None = None,
           landsat_obs: pd.DataFrame | None = None, landsat_month: pd.DataFrame | None = None,
-          modis: pd.DataFrame | None = None, openet: pd.DataFrame | None = None,
-          openet_valley: pd.DataFrame | None = None, smap: pd.DataFrame | None = None,
+          modis: pd.DataFrame | None = None, et: pd.DataFrame | None = None,
+          et_valley: pd.DataFrame | None = None, smap: pd.DataFrame | None = None,
           imerg: pd.DataFrame | None = None, wells: pd.DataFrame | None = None,
-          levels: pd.DataFrame | None = None, bias: dict | None = None) -> tuple[dict, dict]:
+          levels: pd.DataFrame | None = None, grace: pd.DataFrame | None = None,
+          ground_daily: pd.DataFrame | None = None, bias: dict | None = None,
+          growing_months: list[int] | None = None) -> tuple[dict, dict]:
     """Return (context, evidence) for one field. Missing sources are recorded, never invented."""
+    st = kb["settings"]
+    from_history = st["existing"] == "from_history"
+    growing = growing_months or list(range(4, 11))
     elev = float((terrain or {}).get("elevation_m") or meta.get("elevation_m") or grid_elevation_m)
     slope = (terrain or {}).get("slope_pct_plane")
     precip_override = field_precip(power_daily, imerg, bias)
     prep = prepare_daily(power_daily, meta["lat"], elev, grid_elevation_m, Scenario(), precip=precip_override,
                          bias=bias)
-    clim = summarise(prep)
+    clim = summarise_for(prep, kb)
     annual = clim["annual"]
+    hot_c = int(st["hot_day_c"])
 
-    # ---- greenness -------------------------------------------------------
+    # ---- greenness and what grew ---------------------------------------
     if landsat_month is None:
         landsat_month = landsat_monthly(landsat_obs) if landsat_obs is not None else pd.DataFrame(
             columns=["year", "month", "ndvi", "n", "snow_share"])
-    peaks = peak_ndvi_by_year(landsat_obs) if landsat_obs is not None and len(landsat_obs) else {
+    has_obs = landsat_obs is not None and len(landsat_obs)
+    season = (5, 9) if from_history else (1, 12)
+    peaks: dict[int, float | None] = peak_ndvi_by_year(landsat_obs, season) if has_obs else {
         int(y): float(g["ndvi"].quantile(0.9)) for y, g in
-        landsat_month[landsat_month["month"].between(5, 9)].dropna(subset=["ndvi"]).groupby("year") if len(g) >= 3}
+        landsat_month[landsat_month["month"].between(*season)].dropna(subset=["ndvi"]).groupby("year") if len(g) >= 3}
     modis_peak = []
     if modis is not None and not modis.empty:
-        mm = modis[modis["date"].dt.month.between(6, 9)]
+        mm = modis[modis["date"].dt.month.between(6, 9)] if from_history else modis
         modis_peak = [{"year": int(y), "ndvi": round(float(v), 3)}
                       for y, v in mm.groupby(mm["date"].dt.year)["ndvi"].max().items()]
-        for r in modis_peak:      # MODIS fills the greenness check before Landsat coverage starts
-            peaks.setdefault(r["year"], None)
-    # MODIS reads lower than Landsat on a pivot, so it is not used to second-guess the crop map
     peak_for_history = {y: v for y, v in peaks.items() if v is not None}
-    history = interpret_history(cdl_rows, peak_for_history, kb)
+    phenology = None
+    if from_history:
+        history = interpret_history(cdl_rows or [], peak_for_history, kb)
+    else:
+        # no crop map: count green seasons instead (MODIS for the long record, Landsat otherwise)
+        if modis is not None and len(modis) >= 60:
+            pattern, pheno_src = yearly_pattern(modis["date"], modis["ndvi"]), "MODIS 250 m, 16-day"
+        else:
+            lm = landsat_month.dropna(subset=["ndvi"])
+            dates = pd.to_datetime(dict(year=lm["year"], month=lm["month"], day=15)) if len(lm) else []
+            pattern, pheno_src = yearly_pattern(dates, lm["ndvi"] if len(lm) else []), "Landsat monthly means"
+        history = history_from_pattern(pattern)
+        phenology = {"median_seasons": pattern["median_seasons"], "usual_peak_months": pattern["usual_peak_months"],
+                     "n_years": pattern["n_years"], "source": pheno_src}
     recent = history[-8:]
     calendar = low_cover_calendar(landsat_month)
+    flood = flood_calendar(landsat_obs) if has_obs else None
 
-    # ---- water -----------------------------------------------------------
-    calib = water_calibration(openet, history, prep, kb)
+    # ---- water ------------------------------------------------------------
+    has_et = et is not None and not et.empty
+    et_source = (str(et["source"].iloc[0]) if has_et and "source" in et.columns else "OpenET ensemble (Landsat, 30 m)")
+    if from_history:
+        calib = water_calibration(et, history, prep, kb)
+    else:
+        calib = {"available": False, "factor": 1.0,
+                 "reason": "The crop grown each year is not known from a map here, so the textbook estimate "
+                           "is not scaled to the satellite record. The two are shown side by side instead."}
     soil_ctx = {k: (soil or {}).get(k) for k in SOIL_KEYS} if soil else {}
+    soil_source = "soilgrids" if "SoilGrids" in str((soil or {}).get("muname", "")) else "ssurgo"
     hazard = hazard_weights(clim, soil_ctx, slope if slope is not None else 0.3)
     peak_months = hazard["peak_months"]
     lc = [calendar[m]["low_cover_share"] for m in peak_months if calendar[m]["low_cover_share"] is not None]
 
-    # A trend must not straddle a change of data source. When IMERG supplies the rain, the
-    # years before its record starts come from NASA POWER, so rain-based trends use the
-    # IMERG years only.
+    # ---- trends: never across a change of data source -----------------------
     rain_start = None
     if precip_override is not None and imerg is not None and len(imerg):
         rain_start = int(pd.to_datetime(imerg["date"]).dt.year.min())
@@ -215,103 +273,123 @@ def build(meta: dict, kb: dict, *, power_daily: pd.DataFrame, grid_elevation_m: 
         t["from_year"] = int(a["year"].min()) if len(a) else None
         return t
 
-    trends = {k: trend_of(k) for k in
-              ("tmean", "precip", "et0", "days_over_32", "frost_free_days", "water_balance",
-               "heavy_rain_days", "gs_tmean")}
-    gw = groundwater_near(meta["lon"], meta["lat"], wells, levels)
+    trends = {k: trend_of(k) for k in ("tmean", "precip", "et0", "hot_days", "frost_free_days", "water_balance",
+                                       "heavy_rain_days", "gs_tmean")}
+    gw = groundwater_near(meta["lon"], meta["lat"], wells, levels) if wells is not None else grace_summary(grace)
 
+    correction = "lapse"
+    if bias:
+        correction = ("gridmet" if "ground_cell" not in bias else
+                      "imd" if bias.get("temperature_method") == "imd" else "imd_rain")
     sources = {
-        "power": True, "gridmet": bool(bias), "imerg": precip_override is not None, "smap": smap is not None and not smap.empty,
-        "ssurgo": bool(soil), "cdl": bool(cdl_rows), "landsat": len(landsat_month.dropna(subset=["ndvi"])) > 0,
-        "openet": openet is not None and not openet.empty, "srtm": terrain is not None,
+        "power": True, "ground": bool(bias), "imerg": precip_override is not None,
+        "smap": smap is not None and not smap.empty, "soil": bool(soil), "history": bool(history),
+        "landsat": len(landsat_month.dropna(subset=["ndvi"])) > 0, "et": has_et, "srtm": terrain is not None,
         "modis": bool(modis_peak), "groundwater": bool(gw.get("available")),
     }
+    gw_ctx = ({"kind": "wells", **{k: gw.get(k) for k in ("n_wells_trend", "n_deepening", "median_m_per_decade")}}
+              if gw.get("kind") == "wells" else
+              {"kind": "grace", **{k: gw.get(k) for k in ("trend_cm_per_year", "significant", "from_year")}})
     context = {
         **{k: meta[k] for k in ("field_id", "name", "lat", "lon", "area_ha")},
         "is_custom": bool(meta.get("is_custom", False)),
         "elevation_m": round(elev, 1), "slope_pct": slope, "grid_elevation_m": grid_elevation_m,
-        "soil": soil_ctx, "history": history, "n_doubtful_years": sum(bool(r["doubtful"]) for r in recent),
+        "soil": soil_ctx, "soil_source": soil_source, "history": history, "phenology": phenology,
+        "n_doubtful_years": sum(bool(r["doubtful"]) for r in recent),
         "water_factor": calib["factor"], "water_factor_info": calib,
         "landsat": {"low_cover_share_peak_months": round(float(np.mean(lc)), 2) if lc else None},
-        "groundwater": {k: gw.get(k) for k in ("n_wells_trend", "n_deepening", "median_m_per_decade")},
-        "trends": {"days_over_32": trends["days_over_32"],
-                   "days_over_32_gridmet": (bias or {}).get("check", {}).get("days_over_32_gridmet")},
-        "sources": sources,
-        "climate_correction": "gridmet" if bias else "lapse",
+        "groundwater": gw_ctx,
+        "trends": {"hot_days": trends["hot_days"],
+                   "hot_days_ground": (bias or {}).get("check", {}).get("days_over_32_gridmet")},
+        "ground_label": (bias or {}).get("label"),
+        "sources": sources, "climate_correction": correction,
     }
 
     # ---- evidence panels -------------------------------------------------
+    ground_label = (bias or {}).get("label") or ("gridMET (4 km, station-informed)" if correction == "gridmet" else None)
+    rain_source = ("GPM IMERG satellite rainfall" + (f", scaled month by month to {ground_label}" if (bias or {}).get("imerg_precip_ratio") else "")
+                   + " (corrected NASA POWER before 2001 and where IMERG has no file)") if sources["imerg"] else (
+        "NASA POWER" + (f", corrected month by month to {ground_label}" if bias else ""))
+    p_month = clim["precip_month"]
+    p_total = sum(p_month.values()) or 1.0
     ev: dict[str, Any] = {"field_id": meta["field_id"]}
     ev["climate"] = {
         "annual": annual.round(2), "trends": trends,
         "normals": {k: clim[k] for k in ("et0_month", "precip_month", "tmax_month", "tmin_month",
                                          "wind_month", "windy_days_month", "heavy_rain_days_month",
-                                         "frost_days_month")}
-                   | {"hot_days_32_month": clim["heat_days_month"][32],
-                      "hot_days_35_month": clim["heat_days_month"][35]},
+                                         "frost_days_month", "hot_days_month")},
         "summary": {"et0_annual": clim["et0_annual"], "precip_annual": clim["precip_annual"],
                     "frost_free_median": clim["frost_free_median"], "frost_free_p20": clim["frost_free_p20"],
                     "last_spring_frost_median_doy": clim["last_spring_frost_median_doy"],
                     "first_fall_frost_median_doy": clim["first_fall_frost_median_doy"],
-                    "hot_days_32": round(sum(clim["heat_days_month"][32].values()), 1),
+                    "hot_days": round(sum(clim["hot_days_month"].values()), 1), "hot_day_c": hot_c,
+                    "heavy_rain_mm": clim["heavy_rain_mm"],
+                    "heavy_rain_days": round(sum(clim["heavy_rain_days_month"].values()), 1),
+                    "wettest_months": sorted(sorted(MONTHS, key=lambda m: -p_month[m])[:3]),
+                    "wettest_share": round(sum(sorted(p_month.values(), reverse=True)[:3]) / p_total, 2),
                     "baseline": clim["baseline"]},
-        "correction": ({"method": "gridmet", "tmin_delta": bias["tmin_delta"], "tmax_delta": bias["tmax_delta"],
-                        "precip_ratio": bias["precip_ratio"], "check": bias.get("check", {})} if bias else
+        "correction": ({"method": correction, "label": ground_label, "tmin_delta": bias["tmin_delta"],
+                        "tmax_delta": bias["tmax_delta"], "precip_ratio": bias["precip_ratio"],
+                        "check": bias.get("check", {})} if bias else
                        {"method": "lapse", "shift_c": round(0.0065 * (grid_elevation_m - elev), 2)}),
-        "rain_source": (("GPM IMERG satellite rainfall" + (", scaled month by month to gridMET" if (bias or {}).get("imerg_precip_ratio") else "")
-                         + " (corrected NASA POWER before 2001 and where IMERG has no file)") if sources["imerg"]
-                        else "NASA POWER" + (", corrected month by month to gridMET" if bias else "")),
-        "imerg": sources["imerg"],
+        "rain_source": rain_source, "imerg": sources["imerg"], "ground_label": ground_label,
     }
 
-    water: dict[str, Any] = {"calibration": calib, "hazard": {k: v for k, v in hazard.items() if k != "weights"}}
+    water: dict[str, Any] = {"calibration": calib, "hazard": {k: v for k, v in hazard.items() if k != "weights"},
+                             "et_source": et_source if has_et else None}
     et0_ym = prep.groupby(["year", "month"])["et0"].sum()
     p_ym = prep.groupby(["year", "month"])["precip"].sum()
-    if sources["openet"]:
-        o = openet.sort_values("date")
-        water["openet_monthly"] = [
+    if has_et:
+        o = et.sort_values("date")
+        flagged = o["repeated_value"] if "repeated_value" in o.columns else pd.Series(False, index=o.index)
+        water["et_monthly"] = [
             {"date": d.strftime("%Y-%m"), "et": round(float(e), 1),
              "et_min": None if pd.isna(lo) else round(float(lo), 1),
              "et_max": None if pd.isna(hi) else round(float(hi), 1), "flagged": bool(fl),
              "et0_power": round(float(et0_ym.get((d.year, d.month), np.nan)), 1)}
-            for d, e, lo, hi, fl in zip(o["date"], o["et_mm"], o["et_min_mm"], o["et_max_mm"],
-                                        o.get("repeated_value", pd.Series(False, index=o.index)))]
-        oy = o.assign(year=o["date"].dt.year, gs=o["date"].dt.month.between(4, 10))
-        water["openet_annual"] = [
-            {"year": int(y), "et_mm": round(float(g["et_mm"].sum())),
-             "growing_season_et_mm": round(float(g.loc[g["gs"], "et_mm"].sum())),
-             "growing_season_min_mm": round(float(g.loc[g["gs"], "et_min_mm"].sum())),
-             "growing_season_max_mm": round(float(g.loc[g["gs"], "et_max_mm"].sum()))}
+            for d, e, lo, hi, fl in zip(o["date"], o["et_mm"], o["et_min_mm"], o["et_max_mm"], flagged)]
+        oy = o.assign(year=o["date"].dt.year, gs=o["date"].dt.month.isin(growing))
+        water["et_annual"] = [
+            {"year": int(y), "et_mm": round(float(g["et_mm"].sum())), "months": int(len(g)),
+             "growing_season_et_mm": round(float(g.loc[g["gs"], "et_mm"].sum()))}
             for y, g in oy.groupby("year")]
-        water["openet_trend"] = theil_sen_trend([r["year"] for r in water["openet_annual"]],
-                                                [r["growing_season_et_mm"] for r in water["openet_annual"]])
+        full_years = [r for r in water["et_annual"] if r["months"] == 12]
+        water["et_trend"] = theil_sen_trend([r["year"] for r in full_years], [r["et_mm"] for r in full_years])
+    ov = None if et_valley is None or et_valley.empty else et_valley.assign(month=et_valley["date"].dt.month)
+    oclim = None if not has_et else et.assign(month=et["date"].dt.month)
     norm = []
-    ov = None if openet_valley is None or openet_valley.empty else openet_valley.assign(
-        month=openet_valley["date"].dt.month)
-    oclim = None if not sources["openet"] else openet.assign(month=openet["date"].dt.month)
     for m in MONTHS:
         row = {"month": m, "et0_power": clim["et0_month"][m], "precip": clim["precip_month"][m],
                "balance": round(clim["precip_month"][m] - clim["et0_month"][m], 1)}
         if ov is not None:
-            row["eto_gridmet"] = round(float(ov.loc[ov["month"] == m, "eto_mm"].mean()), 1)
-            row["precip_gridmet"] = round(float(ov.loc[ov["month"] == m, "pr_mm"].mean()), 1)
+            row["eto_ground"] = round(float(ov.loc[ov["month"] == m, "eto_mm"].mean()), 1)
         if oclim is not None:
-            sel = oclim[(oclim["month"] == m) & ~oclim.get("repeated_value", False)]
-            row["et_openet"] = round(float(sel["et_mm"].mean()), 1) if len(sel) else None
+            sel = oclim[oclim["month"] == m]
+            if "repeated_value" in sel.columns:
+                sel = sel[~sel["repeated_value"].astype(bool)]
+            row["et_actual"] = round(float(sel["et_mm"].mean()), 1) if len(sel) else None
         norm.append(row)
     water["monthly_normals"] = norm
+
     imerg_year = {}
     if imerg is not None and len(imerg):
         iy = imerg.assign(year=pd.to_datetime(imerg["date"]).dt.year).groupby("year")["precip_mm"].agg(["sum", "count"])
         imerg_year = {int(y): round(float(r["sum"])) for y, r in iy.iterrows() if r["count"] >= 360}
+    ground_year, eto_year = {}, {}
     if ov is not None:
         yr = ov.assign(year=ov["date"].dt.year).groupby("year")[["eto_mm", "pr_mm"]].sum()
-        water["source_comparison"] = [
-            {"year": int(y), "et0_power": round(float(et0_ym.loc[y].sum())) if y in et0_ym.index.get_level_values(0) else None,
-             "eto_gridmet": round(float(r["eto_mm"])),
-             "precip_power": round(float(p_ym.loc[y].sum())) if y in p_ym.index.get_level_values(0) else None,
-             "precip_gridmet": round(float(r["pr_mm"])),
-             "precip_imerg_raw": imerg_year.get(int(y))} for y, r in yr.iterrows()]
+        ground_year = {int(y): round(float(r["pr_mm"])) for y, r in yr.iterrows()}
+        eto_year = {int(y): round(float(r["eto_mm"])) for y, r in yr.iterrows()}
+    elif ground_daily is not None and len(ground_daily):
+        gy = ground_daily.assign(year=ground_daily["date"].dt.year).groupby("year")["precip_mm"].agg(["sum", "count"])
+        ground_year = {int(y): round(float(r["sum"])) for y, r in gy.iterrows() if r["count"] >= 360}
+    years_cmp = sorted(y for y in (set(ground_year) | set(imerg_year)) if y >= 2016)
+    p_years = set(p_ym.index.get_level_values(0))
+    water["source_comparison"] = [
+        {"year": y, "precip_used": round(float(p_ym.loc[y].sum())) if y in p_years else None,
+         "precip_imerg_raw": imerg_year.get(y), "precip_ground": ground_year.get(y),
+         "et0_power": round(float(et0_ym.loc[y].sum())) if y in p_years else None, "eto_ground": eto_year.get(y)}
+        for y in years_cmp]
     ev["water"] = water
 
     if sources["smap"]:
@@ -335,9 +413,11 @@ def build(meta: dict, kb: dict, *, power_daily: pd.DataFrame, grid_elevation_m: 
         "calendar": calendar, "peak_by_year": {y: (None if v is None else round(v, 3)) for y, v in sorted(peaks.items())},
         "modis_peak": modis_peak,
         "modis_trend": theil_sen_trend([r["year"] for r in modis_peak], [r["ndvi"] for r in modis_peak]) if modis_peak else None,
+        "flood": flood, "phenology": phenology,
     }
     ev["history"] = history
-    ev["soil"] = {**soil_ctx, "mapunits": (soil or {}).get("mapunits")} if soil else None
+    ev["history_kind"] = "crop_map" if from_history else "seasons"
+    ev["soil"] = {**soil_ctx, "source": soil_source, "mapunits": (soil or {}).get("mapunits")} if soil else None
     ev["terrain"] = terrain
     ev["groundwater"] = gw
 
@@ -352,10 +432,11 @@ def build(meta: dict, kb: dict, *, power_daily: pd.DataFrame, grid_elevation_m: 
         for m in MONTHS:
             sub = gz[(gz["month"] == m)].dropna(subset=["z"])
             dips[m] = float((sub["z"] <= -1.0).mean()) if len(sub) >= 4 else None
+    frosty = sum(clim["frost_days_month"].values()) >= 5
     vul = []
-    for m in range(4, 11):
-        comp = {"heat": min(clim["heat_days_month"][32][m] / 10.0, 1.0),
-                "frost": min(clim["frost_days_month"][m] / 10.0, 1.0) if m in (5, 6, 7, 8, 9) else 0.0,
+    for m in growing:
+        comp = {"heat": min(clim["hot_days_month"][m] / 10.0, 1.0),
+                "frost": (min(clim["frost_days_month"][m] / 10.0, 1.0) if m in (5, 6, 7, 8, 9) else 0.0) if frosty else None,
                 "water_gap": gap[m] / gap_max,
                 "greenness_dips": dips.get(m),
                 "dry_soil": (1.0 - sm_clim[m] / sm_max) if (sm_max and m in sm_clim) else None}
@@ -364,13 +445,13 @@ def build(meta: dict, kb: dict, *, power_daily: pd.DataFrame, grid_elevation_m: 
                     "index": round(float(np.mean(vals)), 2)})
     top = sorted(vul, key=lambda r: -r["index"])[:2]
     ev["vulnerability"] = {"months": vul, "most_vulnerable": sorted(r["month"] for r in top),
-                           "method": "Each part is scaled 0-1 and averaged: hot days (>32 °C, 10 days = 1), "
-                                     "frost days in May-September (10 days = 1), the gap between reference ET "
-                                     "and rain, how often greenness fell well below its own normal, and how "
-                                     "dry the SMAP soil-moisture pixel normally is."}
+                           "method": f"Each part is scaled 0-1 and averaged: hot days (>{hot_c} °C, 10 days = 1), "
+                                     + ("frost days in May-September (10 days = 1), " if frosty else "")
+                                     + "the gap between reference ET and rain, how often greenness fell well below "
+                                       "its own normal, and how dry the SMAP soil-moisture pixel normally is."}
     bare = [m for m in MONTHS if (calendar[m]["low_cover_share"] or 0) >= 0.5]
     ev["bare"] = {"months_usually_low_cover": bare, "threshold_ndvi": LOW_COVER_NDVI,
                   "risk_months": peak_months,
-                  "note": "Low green cover is not always bare soil: dormant alfalfa and stubble still "
-                          "protect the surface but look brown from space, and snow hides the ground."}
+                  "note": "Low green cover is not always bare soil: dormant crops and stubble still "
+                          "protect the surface but look brown from space, and snow or floodwater hides the ground."}
     return clean(context), clean(ev)

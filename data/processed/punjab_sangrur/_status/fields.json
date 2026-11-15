@@ -1,0 +1,27 @@
+{
+  "source": "fields",
+  "title": "Sample farm blocks (from ESA WorldCover cropland)",
+  "tier": "MUST",
+  "status": "ok",
+  "fetched": "ESA WorldCover 10 m 2021: 91% of the pilot box is cropland; 1378 candidate blocks, 12 chosen to spread across the box",
+  "resolution": "10 m land cover, averaged to the 30 m analysis grid; blocks are 300 m x 300 m (9 ha)",
+  "date_range": "2021",
+  "credit": "Zanaga, D. et al. ESA WorldCover 10 m v200 (2022), CC BY 4.0. Accessed through Microsoft Planetary Computer.",
+  "access": "STAC collection esa-worldcover, windowed COG read",
+  "message": "12 sample blocks, cropland share 93%-100%",
+  "action_needed": "",
+  "sanity": {
+    "crs": "EPSG:4326",
+    "n_candidates": 1378,
+    "cropland_share_of_box": 0.912,
+    "passed": true
+  },
+  "outputs": [
+    "fields.geojson",
+    "rasters/cropland_fraction.tif",
+    "rasters/landcover.tif"
+  ],
+  "is_demo_data": false,
+  "notes": "No public map gives field boundaries or yearly crop types here, and fields average about one hectare. A block summarises the fields inside it; draw your own field for a closer look.",
+  "generated_at": "2026-11-14T19:40:32Z"
+}

@@ -115,10 +115,10 @@ def main() -> None:
     df = pd.DataFrame(rows)
     df.to_parquet(PROCESSED / "field_terrain.parquet", index=False)
 
-    checks = [sanity_range(df["elevation_m"], 1500, 2400, "field elevation m"),
+    checks = [sanity_range(df["elevation_m"], -50, 5000, "field elevation m"),
               sanity_range(df["slope_pct_plane"], 0, 8, "field tilt % (plane fit)"),
               sanity_range(df["slope_pct_mean"], 0, 15, "field mean slope % (smoothed)"),
-              sanity_range(elev[np.isfinite(elev)], 1500, 3300, "pilot-box elevation m")]
+              sanity_range(elev[np.isfinite(elev)], -50, 6000, "pilot-box elevation m")]
     ok = all(c["passed"] for c in checks)
     write_status(
         SOURCE, status="ok" if ok else "partial", title=TITLE, tier=TIER,

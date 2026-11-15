@@ -128,6 +128,8 @@ def read_group(key, items, transform: Affine, shape, bounds) -> str:
         ndvi = (sr["nir08"] - sr["red"]) / (sr["nir08"] + sr["red"])
         bsi = ((sr["swir16"] + sr["red"]) - (sr["nir08"] + sr["blue"])) / (
             (sr["swir16"] + sr["red"]) + (sr["nir08"] + sr["blue"]))
+        # land-surface water index: rises above NDVI when a field is flooded (paddy transplanting)
+        lswi = (sr["nir08"] - sr["swir16"]) / (sr["nir08"] + sr["swir16"])
     def pack(a):
         o = np.full(shape, NODATA, dtype="int16")
         o[good] = np.clip(np.round(a[good] * 10000), -10000, 10000).astype("int16")
@@ -135,7 +137,7 @@ def read_group(key, items, transform: Affine, shape, bounds) -> str:
     flags = np.zeros(shape, dtype="uint8")   # 0 no data / cloud, 1 clear, 2 clear + snow
     flags[good] = 1
     flags[good & snow] = 2
-    np.savez_compressed(out, ndvi=pack(ndvi), bsi=pack(bsi), flags=flags,
+    np.savez_compressed(out, ndvi=pack(ndvi), bsi=pack(bsi), lswi=pack(lswi), flags=flags,
                         platforms=np.array(sorted({i.properties.get("platform", "") for i in items})))
     return "new"
 
@@ -191,6 +193,7 @@ def field_observations(fields) -> pd.DataFrame:
         if z is None:
             continue
         ndvi, bsi, flags = z["ndvi"], z["bsi"], z["flags"]
+        lswi = z["lswi"] if "lswi" in z.files else None      # older caches predate this index
         for fid, w in weights.items():
             sl = slices[fid]
             wf, fl = w[sl], flags[sl]
@@ -205,10 +208,14 @@ def field_observations(fields) -> pd.DataFrame:
             snow_frac = float(wf[fl == 2].sum() / wsum)
             var = float((wf[clear] * (n[clear] - mean_ndvi) ** 2).sum() / wsum)
             low = float(wf[clear & (n < 0.2)].sum() / wsum)
+            mean_lswi = float("nan")
+            if lswi is not None:
+                mean_lswi, _ = weighted_mean(np.where(clear, lswi[sl] / 10000.0, np.nan), wf)
             out.append({"field_id": fid, "date": pd.Timestamp(key[0]), "wrs_path": key[1],
                         "ndvi": round(mean_ndvi, 4), "bsi": round(mean_bsi, 4),
                         "ndvi_sd": round(var ** 0.5, 4), "valid_frac": round(frac, 3),
-                        "snow_frac": round(snow_frac, 3), "low_cover_frac": round(low, 3)})
+                        "snow_frac": round(snow_frac, 3), "low_cover_frac": round(low, 3),
+                        "lswi": None if mean_lswi != mean_lswi else round(mean_lswi, 4)})
     return pd.DataFrame(out)
 
 
@@ -269,7 +276,7 @@ def main() -> None:
     per_field = obs.groupby("field_id").size()
     checks = [sanity_range(obs["ndvi"], -0.2, 1.0, "field-mean NDVI"),
               sanity_range(obs["bsi"], -0.7, 0.7, "field-mean bare-soil index"),
-              sanity_range(per_field, 60, 5000, "clear observations per field")]
+              sanity_range(per_field, 40, 5000, "clear observations per field")]
     ok = all(c["passed"] for c in checks)
     n_scenes = len(cached_keys(f"{FIELD_EO_START}-01-01", f"{FIELD_EO_END}-12-31"))
     write_status(

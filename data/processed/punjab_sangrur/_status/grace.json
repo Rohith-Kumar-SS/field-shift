@@ -1,0 +1,67 @@
+{
+  "source": "grace",
+  "title": "GRACE / GRACE-FO water storage anomaly (JPL mascons RL06.3)",
+  "tier": "OPTIONAL",
+  "status": "ok",
+  "fetched": "259 monthly values for the 0.5-degree grid cell at 30.25 N, 75.75 E (the value of the ~3-degree mascon it belongs to)",
+  "resolution": "~300 km mascon, posted on a 0.5-degree grid; monthly, with gaps (2017-2018 between missions)",
+  "date_range": "2002-04 to 2026-09",
+  "credit": "Wiese, D. N. et al. (2023). JPL GRACE and GRACE-FO Mascon Ocean, Ice, and Hydrology Equivalent Water Height CRI Filtered RL06.3Mv04. NASA PO.DAAC.",
+  "access": "PO.DAAC cloud archive, one 44 MB global file downloaded once, Earthdata bearer token",
+  "message": "259 months; trend -3.81 cm of water per year (decreasing, p=0.0); sanity passed",
+  "action_needed": "",
+  "sanity": {
+    "checks": [
+      {
+        "variable": "water storage anomaly cm",
+        "n": 259,
+        "n_finite": 259,
+        "all_nan": false,
+        "expected_range": [
+          -150,
+          150
+        ],
+        "min": -76.4743,
+        "max": 25.5207,
+        "mean": -28.4358,
+        "in_range": true,
+        "passed": true
+      },
+      {
+        "variable": "uncertainty cm",
+        "n": 259,
+        "n_finite": 259,
+        "all_nan": false,
+        "expected_range": [
+          0,
+          60
+        ],
+        "min": 1.778,
+        "max": 19.1668,
+        "mean": 2.5016,
+        "in_range": true,
+        "passed": true
+      }
+    ],
+    "trend": {
+      "n": 23,
+      "slope_per_decade": -38.1331,
+      "slope_ci95_per_decade": [
+        -42.4103,
+        -34.6697
+      ],
+      "intercept": 7655.6235,
+      "kendall_tau": -0.874,
+      "p_value": 0.0,
+      "significant": true,
+      "direction": "decreasing"
+    },
+    "trend_cm_per_year": -3.81
+  },
+  "outputs": [
+    "grace_monthly.parquet"
+  ],
+  "is_demo_data": false,
+  "notes": "Total water storage (groundwater + soil moisture + surface water + snow) for a region about 300 km across, relative to the 2004-2009 mean. Not a groundwater level and not a field value. Gain factors were not applied, so the size of the trend is indicative.",
+  "generated_at": "2026-11-14T19:44:37Z"
+}
