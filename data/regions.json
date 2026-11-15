@@ -1,0 +1,188 @@
+[
+ {
+  "id": "diamond_valley_nv",
+  "name": "Diamond Valley, Eureka County, Nevada",
+  "short": "Diamond Valley, Nevada",
+  "country": "USA",
+  "tagline": "Irrigated alfalfa under centre pivots, on falling groundwater",
+  "bbox": [
+   -116.08,
+   39.62,
+   -115.95,
+   39.75
+  ],
+  "centroid": [
+   -116.015,
+   39.685
+  ],
+  "field_unit": "pivot",
+  "imperial": true,
+  "landmark": "Eureka",
+  "n_fields": 14,
+  "stats": {
+   "precip_month": [
+    16.8,
+    19.1,
+    21.3,
+    23.4,
+    27.8,
+    11.7,
+    12.7,
+    15.2,
+    16.5,
+    18.9,
+    16.0,
+    18.8
+   ],
+   "et0_month": [
+    36.2,
+    46.3,
+    81.4,
+    112.6,
+    152.2,
+    194.6,
+    210.2,
+    191.3,
+    138.1,
+    89.9,
+    50.4,
+    34.1
+   ],
+   "precip_annual": 218,
+   "et0_annual": 1337,
+   "hot_days": 33,
+   "hot_day_c": 32,
+   "irrigation_need_mm": 600,
+   "groundwater": {
+    "kind": "wells",
+    "n_wells_trend": 3,
+    "n_deepening": 3,
+    "median_m_per_decade": 5.01
+   }
+  }
+ },
+ {
+  "id": "punjab_sangrur",
+  "name": "Sangrur-Barnala, Punjab, India",
+  "short": "Sangrur, Punjab",
+  "country": "India",
+  "tagline": "Rice-wheat on tubewells, where the water table drops every year",
+  "bbox": [
+   75.62,
+   30.22,
+   75.75,
+   30.35
+  ],
+  "centroid": [
+   75.685,
+   30.285
+  ],
+  "field_unit": "block",
+  "imperial": false,
+  "landmark": "Sangrur",
+  "n_fields": 12,
+  "stats": {
+   "precip_month": [
+    16.6,
+    15.2,
+    17.9,
+    11.8,
+    24.4,
+    67.6,
+    133.0,
+    109.2,
+    82.2,
+    6.9,
+    4.9,
+    7.2
+   ],
+   "et0_month": [
+    71.0,
+    91.3,
+    144.5,
+    200.2,
+    245.9,
+    223.8,
+    173.5,
+    159.0,
+    141.7,
+    125.1,
+    95.2,
+    76.8
+   ],
+   "precip_annual": 497,
+   "et0_annual": 1748,
+   "hot_days": 37,
+   "hot_day_c": 40,
+   "irrigation_need_mm": 1667,
+   "groundwater": {
+    "kind": "grace",
+    "trend_cm_per_year": -3.81,
+    "significant": true,
+    "from_year": 2002
+   }
+  }
+ },
+ {
+  "id": "cauvery_delta_tn",
+  "name": "Cauvery delta, Thanjavur, Tamil Nadu, India",
+  "short": "Cauvery delta, Tamil Nadu",
+  "country": "India",
+  "tagline": "Canal-fed paddy that waits on the Mettur dam and the north-east monsoon",
+  "bbox": [
+   79.2,
+   10.86,
+   79.33,
+   10.99
+  ],
+  "centroid": [
+   79.265,
+   10.925
+  ],
+  "field_unit": "block",
+  "imperial": false,
+  "landmark": "Thanjavur",
+  "n_fields": 12,
+  "stats": {
+   "precip_month": [
+    38.0,
+    20.1,
+    19.6,
+    43.0,
+    66.1,
+    58.4,
+    61.4,
+    123.3,
+    121.7,
+    178.0,
+    306.9,
+    183.5
+   ],
+   "et0_month": [
+    136.5,
+    150.6,
+    190.2,
+    194.3,
+    209.9,
+    216.1,
+    220.4,
+    202.1,
+    172.4,
+    135.2,
+    107.7,
+    115.1
+   ],
+   "precip_annual": 1220,
+   "et0_annual": 2050,
+   "hot_days": 33,
+   "hot_day_c": 38,
+   "irrigation_need_mm": 725,
+   "groundwater": {
+    "kind": "grace",
+    "trend_cm_per_year": 0.69,
+    "significant": true,
+    "from_year": 2002
+   }
+  }
+ }
+]
