@@ -34,7 +34,42 @@
    12
   ],
   "hot_day_c": 40,
-  "imperial": false
+  "imperial": false,
+  "has_frost": false,
+  "landmark": "Sangrur",
+  "zoom": 11.6,
+  "greenness_layers": [
+   {
+    "id": "ndvi",
+    "title": "Monsoon-crop greenness (Aug-Sep)",
+    "months": [
+     8,
+     9
+    ]
+   },
+   {
+    "id": "ndvi_b",
+    "title": "Winter-crop greenness (Feb-Mar)",
+    "months": [
+     2,
+     3
+    ]
+   }
+  ],
+  "cover_months": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12
+  ]
  },
  "power_cells": {
   "P+75.625_+30.50": {
@@ -170,6 +205,19 @@
    "action_needed": "",
    "is_demo_data": false,
    "notes": "Gridded reanalysis, not an on-farm weather station. Temperatures are later adjusted from the grid-cell mean elevation to each field's elevation with a standard 6.5 degC/km lapse rate (documented in engine/agromet.py)."
+  },
+  {
+   "source": "overlays",
+   "title": "Map overlays (PNG)",
+   "tier": "MUST",
+   "status": "ok",
+   "resolution": "25 m Web Mercator",
+   "date_range": "",
+   "credit": "Derived by this project from Landsat, the crop or land-cover map and SRTM.",
+   "message": "19 overlays written",
+   "action_needed": "",
+   "is_demo_data": false,
+   "notes": ""
   },
   {
    "source": "smap",

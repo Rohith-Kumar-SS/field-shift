@@ -1,261 +1,237 @@
 # Field Shift: Rotation Scenario Explorer
 
-A farmer-centred decision-support tool for the 2026 NASA Space Apps Challenge,
-**"Field Shift: Adapting Farms with NASA Data"**.
+**Live:** https://rohith-kumar-ss.github.io/field-shift/
 
-Pick a field (or draw one), see what NASA Earth observations and local soil data say
-about it, set your own priorities, and compare five crop rotations, the existing one
-included. Every rotation comes with why it was suggested, the evidence, the benefits,
-the information gaps, the risks and a checklist to take to a local expert.
+A decision-support tool for the 2026 NASA Space Apps challenge *Field Shift: Adapting
+Farms with NASA Data*. A farmer picks a field (or draws one), sees what thirty years of
+NASA weather, satellite greenness, soil and water records say about it, sets their own
+priorities, and compares their current crop rotation with four alternatives.
 
-> **It compares options. It never says "plant crop X".** It supports, and does not
-> replace, farmer judgment and local agricultural expertise.
+> **It compares options. It never tells anyone what to plant.** Every score opens to the
+> formula, the numbers and the sources behind it, and every rotation lists its risks,
+> what the tool cannot see, and what to check with a local expert.
 
-Pilot area: **Diamond Valley, Eureka County, Nevada**: irrigated alfalfa on centre
-pivots at about 1,800 m, in the basin that became Nevada's first Critical Management
-Area because groundwater pumping has exceeded recharge for decades.
+Three pilot areas, each a box about 13 km across with every source downloaded and checked:
+
+| Region | Farming system | Fields | What makes it different |
+| :-- | :-- | :-- | :-- |
+| **Diamond Valley, Nevada, USA** | Irrigated alfalfa under centre pivots, on falling groundwater | 14 pivots detected from Landsat | A crop map exists, so the existing rotation is read from the satellite record |
+| **Sangrur, Punjab, India** | Rice-wheat on tubewells | 12 sample plots (300 m blocks of cropland) | No crop map: the farmer says what is grown, and the satellite count of crop seasons checks it |
+| **Cauvery delta, Tamil Nadu, India** | Canal-fed paddy (kuruvai, thaladi, samba) | 12 sample plots | Rain arrives October-December; one or two rice crops depending on canal water |
 
 ## Status at a glance
 
-| | |
-| :-- | :-- |
-| App | Works: `python tasks.py dev`, then open http://localhost:5180 |
-| Fields | 14 real pivots, outlines detected from Landsat (93 pivots found in the pilot box) |
-| Data | Real downloads only. **No demo, sample or simulated data anywhere.** |
-| Tests | 48 passing (`python tasks.py test`) |
-| Data sources | All eleven loaded, including GPM IMERG (see [DATA_LOG.md](DATA_LOG.md)) |
-| Still open | No agronomist has reviewed the rotation library; one valley only |
-
-## The problem
-
-Choosing what to rotate into is hard because the answer depends on the field and on the
-farmer. A crop that rests the soil may use too much water, need a combine nobody owns,
-have no buyer, or die in a June frost. Farmers already know their fields; what they
-often lack is a quick way to see the long record (weather, water use, greenness, soil,
-groundwater) side by side with the trade-offs of each option, with the uncertainty
-stated honestly.
+- All sources load for all three regions. **No demo, sample or simulated data anywhere.**
+- 49 automated tests pass, including one that runs the browser's scoring engine and the
+  Python reference on the same fields and compares every number and every sentence.
+- The site is static (GitHub Pages): no server, no login, no keys in the browser. Moving a
+  slider re-scores instantly on the device.
+- **Not done:** no farmer or agronomist has reviewed the rotation libraries. That is the
+  next step before anyone acts on them.
 
 ## What the tool does
 
-| Challenge asks for | What the app shows |
-| :-- | :-- |
-| Temperature, heat stress | Yearly mean temperature and days above 32 °C, 1991-2025, with a trend test |
-| Rainfall, extreme precipitation | GPM IMERG yearly rain, heavy-rain days and monthly normals |
-| Soil moisture | SMAP monthly anomaly (drier or wetter than normal for that month), 2015-2025 |
-| Evaporation | OpenET field-scale actual ET with the model spread, reference ET, water balance |
-| Frost risk | Frost-free season every year, and in how many years it was long enough for each crop |
-| Vegetation stress | Landsat NDVI by month (2018-2025), MODIS peak greenness (2001-2025) |
-| Long-term water trends | USGS groundwater levels in wells near the field, back to the 1960s |
-| When fields are bare | A month-by-month calendar of low green cover against the months of highest wind and rain risk |
-| When the crop is vulnerable | A stress calendar combining heat, frost, water gap, greenness dips and dry soil |
-| Local soil information | SSURGO texture, organic matter, salinity, pH, wind erodibility, water-holding capacity |
-| Compare at least three rotations incl. the existing one | Five: the existing rotation (read from the crop history) plus four alternatives |
-| Why, evidence, benefits, gaps, risks | On every rotation card, each "why" linked to an evidence panel |
-| Farmer priorities and constraints | Eight priority sliders; water available, equipment and market limits |
-| Scenario sliders | Warmer by 0-4 °C and rain ±40 %: water demand, hot days and frost dates are recomputed and the rotations re-scored |
-| Explain the science; satellite vs ground | Plain-language guide (ET, NDVI, soil-moisture anomaly, frost risk, water balance, satellite vs ground, confidence) |
-| Explain uncertainty | A confidence level on every score and every rotation, with reasons; model spread on ET; doubtful crop-map years flagged |
-| Supports, not replaces, local expertise | Stated at the top of every screen, in every result, and backed by a "check with a local expert" checklist |
-
-Also: map layers (summer greenness by year, crop map by year, low-cover months, slope,
-soil map units, wells), fields coloured by an indicator, a table view of every chart,
-and a phone layout.
+1. **Pick a region, then a field.** The map comes down from orbit to the pilot box.
+   Tap a numbered field, pick one from the list under the map, or draw your own.
+2. **See the field.** What grew there (crop map in the USA; crop seasons counted from
+   greenness in India), water used according to satellites, rain against the weather's
+   demand, hot days, soil, long-term water (USGS wells in Nevada, GRACE in India), and a
+   month-by-month calendar of bare soil, erosion risk and crop stress.
+3. **Say what matters.** Eight sliders: save water, keep soil covered, nitrogen from
+   legumes, build organic matter, break pest cycles, income, heat and dry-spell
+   resilience, ease. Three limits: water you can count on, equipment, buyers.
+   Two what-if sliders shift the whole weather record (warmer, wetter or drier).
+4. **Compare rotations.** The current rotation plus four alternatives, each drawn as a
+   *rotation ring*: one lap is the whole rotation, coloured arcs are crops holding the
+   ground, pale gaps are bare soil. Cards slide into their new order as priorities change.
+5. **Open any card** for why it was suggested for *this* field (tied to numbers and to an
+   evidence panel), benefits, risks, what the tool does not know, a checklist for a local
+   expert, and the formula and inputs behind each of the eight scores.
+6. **Evidence panels** with charts and tables for water, weather, greenness and cover,
+   soil, crop history and long-term water, each with its source and its limits.
 
 ## Run it
 
-Requirements: Python 3.10+ and Node.js 18+. `make` is optional.
-
 ```bash
-python tasks.py setup    # or: make setup   (venv, Python and Node dependencies)
-python tasks.py dev      # or: make dev     (API on :8360, app on :5180)
+python tasks.py setup            # Python venv + npm packages
+python tasks.py dev              # http://localhost:5180
+python tasks.py test             # 49 tests
+python tasks.py build            # static site in frontend/dist
 ```
 
-The processed data for the pilot is committed, so the app runs straight after `setup`.
-To rebuild the data from the sources:
+The exported data ships with the repository (`frontend/public/data`), so the app runs
+without any credentials. To rebuild the data from the sources:
 
 ```bash
-cp .env.example .env     # then add your own credentials
-python tasks.py check    # tests each service; prints no secrets
-python tasks.py data     # or: make data    (cached: a re-run fetches only what is missing)
-python tasks.py test     # or: make test
+cp .env.example .env             # add your own Earthdata token and OpenET key
+python tasks.py check            # which services answer (prints no secrets)
+python tasks.py data --region all            # everything, cached in data/raw (hours the first time)
+python tasks.py data --region punjab_sangrur indicators overlays export   # or single steps
+python tasks.py docs             # DATA_LOG.md and ROTATION_KNOWLEDGE.md
 ```
 
-`python tasks.py serve` builds the frontend and serves app and API together on :8360.
-A single step can be re-run with `python tasks.py data imerg indicators datalog`.
+`python tasks.py deploy` builds the site and publishes it (see `deploy/deploy.py`).
 
 ### Credentials
 
-`.env` (git-ignored) holds `EARTHDATA_TOKEN`, `OPENET_API_KEY` and `GEE_PROJECT_ID`. They
-are read with python-dotenv, sent only to the service they belong to, and never printed
-or logged. Rotate them after the event if they were ever shared in a chat.
-
-### Earthdata access for IMERG
-
-GPM IMERG comes from NASA's GES DISC, which needs one extra step beyond a token: the
-Earthdata account that issued the token must approve the **NASA GESDISC DATA ARCHIVE**
-application once (https://urs.earthdata.nasa.gov > Applications > Authorized Apps >
-Approve More Applications). Without it GES DISC answers `HTTP 403 EULA Acceptance
-Failure`; the pipeline then records the exact step in DATA_LOG.md, writes no rainfall
-data, and the app falls back to NASA POWER rainfall and labels it. This was done for
-the current data on 15 November 2026.
-
-Earth Engine is **not required**: `earthengine authenticate` was never run on the build
-machine, so Landsat is read from Microsoft Planetary Computer (the same Landsat
-Collection 2 Level-2 scenes).
+Only the pipeline needs them, and only for two services: a NASA Earthdata bearer token
+(GPM IMERG, SMAP, SRTM, GRACE; the account must have accepted the GES DISC data-use
+agreement) and an OpenET API key (Nevada only). They live in `.env`, which is git-ignored;
+nothing is printed, logged or written into code. Everything else is open without a key.
 
 ## Architecture
 
-```mermaid
-flowchart LR
-  subgraph Sources
-    P[NASA POWER] --- S[SMAP] --- L[Landsat 8/9] --- M[MODIS] --- T[SRTM]
-    I[GPM IMERG] --- O[OpenET] --- U[SSURGO] --- C[USDA CDL] --- W[USGS wells] --- G[gridMET]
-  end
-  Sources --> PIPE["pipeline/ one script per source, cached in data/raw"]
-  PIPE --> PROC["data/processed: Parquet, GeoJSON, rasters, per-field JSON"]
-  KB["knowledge/rotation_knowledge.yaml: crop traits with a source each"] --> ENG
-  PROC --> ENG["engine/: FAO-56 agromet, crop-history check, weighted MCDA"]
-  ENG --> API["backend/ FastAPI: fields, evidence, POST /api/score"]
-  API --> UI["frontend/ React + MapLibre + Recharts"]
+```
+pipeline/            one script per source, cached and resumable; regions.py lists the pilots
+  s00..s11           fetch and reduce each source to field x month
+  s20_indicators     fuse everything into context (for scoring) + evidence (for charts)
+  s30_overlays       map layers
+  s40_export         static files for the browser, incl. a 140 m "atlas" for drawn fields
+knowledge/<region>.yaml   crops, calendars, class scores, rotations, references (data, not code)
+engine/              Python reference: FAO-56 ET, climate summary, scoring, explanations
+frontend/src/engine  the same engine in TypeScript: this is what runs in the browser
+frontend/src         React + MapLibre + Recharts
+tests/               pytest: maths, scoring, wording rule, and Python-vs-browser parity
+deploy/deploy.py     GitHub repository + GitHub Pages
 ```
 
-```
-pipeline/   s00_fields ... s30_overlays, run_all.py, data_log.py, check_access.py
-data/       raw/ (cache, git-ignored)   processed/ (what the app reads)
-knowledge/  rotation_knowledge.yaml, glossary.json
-engine/     agromet.py climate.py history.py context.py scoring.py knowledge.py
-backend/    main.py custom.py
-frontend/   src/App.tsx, components/{MapView,FieldSummary,Priorities,Strategies,Evidence,Modals}.tsx
-tests/      agromet, processing, scoring, API
-```
-
-The live app makes no calls to any data provider: it reads `data/processed` only. (The
-basemap tiles are the one thing fetched from the internet while it runs.)
+Why a static site: the scoring is arithmetic on a field's own data, so it can run on the
+farmer's device. That removes hosting, cold starts and any need for a connection after
+the page has loaded (apart from the satellite basemap), and sliders respond at once.
+Each field ships 30 years of locally corrected daily weather as a 131 KB binary file;
+the browser recomputes reference ET, frost dates and hot days when a what-if slider moves.
 
 ### Harmonisation
 
-Everything is reduced to **field polygon x month**, plus annual and growing-season
-summaries, as the research report recommends:
-
-| Native data | How it reaches the field |
-| :-- | :-- |
-| Landsat 30 m, CDL 30 m, SRTM 30 m | Area-weighted zonal statistics (pixel weight = share of the pixel inside the field) |
-| MODIS 250 m | Same, on the sinusoidal grid; only each year's peak is used |
-| OpenET 30 m | Field-polygon mean from the OpenET API |
-| SMAP 9 km, POWER ~50 km, gridMET 4 km | The grid cell containing the field; anomaly against that cell's own calendar month |
-| SSURGO map units | Component-percent and thickness-weighted (0-30 cm), then area-weighted over the field |
-| USGS wells | Wells within 12 km, yearly median depth, pumping-affected readings excluded |
+Every source is reduced to **field polygon x month** (plus yearly and seasonal
+summaries) with area-weighted zonal statistics. Coarse grids (weather 50 km, IMERG 10 km,
+SMAP 9 km, GRACE ~300 km) are never presented as field measurements: each panel says
+what the pixel covers. NASA POWER is corrected month by month to a ground-station grid
+(gridMET in Nevada, India Meteorological Department grids in India) by the delta method.
 
 ### Scoring
 
-`Score(rotation) = sum of weight x score`, over eight priorities, with the farmer's
-sliders normalised to sum to 1. Rule-based agronomy plus statistical climatology; no
-yield model and no machine learning. Every score opens to show its formula, inputs,
-sources and confidence. Full method and every crop value with its source:
-[ROTATION_KNOWLEDGE.md](ROTATION_KNOWLEDGE.md).
+Transparent weighted multi-criteria analysis: `overall = sum(weight x score)`, eight
+criteria scored 0-1 from rules documented in [ROTATION_KNOWLEDGE.md](ROTATION_KNOWLEDGE.md).
+No machine-learning model, no yield prediction. The same code serves every region; what
+differs is the knowledge base and a few settings (how pest pressure is judged for
+perennial stands against annual crops, which rotation is the water yardstick, and
+whether the existing rotation is read from a crop map or chosen by the farmer).
 
 ## Datasets
 
-Details, date ranges, sanity checks and credits for each: [DATA_LOG.md](DATA_LOG.md).
+Details, date ranges, sanity checks and credits for each, per region: [DATA_LOG.md](DATA_LOG.md).
 
-| Tier | Dataset | Status | Used for |
-| :-- | :-- | :-- | :-- |
-| MUST | NASA POWER | Loaded: 12,784 days, 1991-2025 | Reference ET, heat, frost, wind, rain, trends, scenarios |
-| MUST | GPM IMERG | Loaded: 9,039 days, 2001-01-01 to 2025-09-30 | Rainfall, heavy-rain days |
-| MUST | SMAP SPL3SMP_E | Loaded: 2,857 retrieval days, 2015-2025 | Soil-moisture anomaly |
-| MUST | SSURGO | Loaded: 30 map units | Soil properties, erodibility, salinity |
-| MUST | USDA CDL | Loaded: 2008-2025 | Crop history, existing rotation |
-| STRONG | Landsat 8/9 | Loaded: 461 overpasses, 4,178 clear field observations | Field outlines, NDVI, low-cover months, crop-map check |
-| STRONG | OpenET | Loaded: 14 fields, 2016-2025 (47 of the 100 monthly API requests used) | Actual ET, model spread, anchoring the water estimate |
-| OPTIONAL | SRTM | Loaded | Field tilt and elevation |
-| OPTIONAL | MODIS MOD13Q1 | Loaded: 575 composites, 2001-2025 | 25-year peak greenness |
-| OPTIONAL | USGS NWIS | Loaded: 310 wells, 3,425 measurements | Long-term water trend |
-| OPTIONAL | gridMET | Loaded: 1991-2025 | Bias-correcting NASA POWER to the valley floor |
-| SKIP | ECOSTRESS | Not used | Irregular ISS overpasses and revisit, heavy swath preprocessing; OpenET already gives field ET |
-| SKIP | GRACE / GRACE-FO | Not used | ~300 km footprint, far larger than the valley; wells answer the question directly |
-| SKIP | GEDI | Not used | Forest-structure lidar; not meaningful over hay |
-| OPTIONAL | PRISM, NLDAS/GLDAS, ERA5, Sentinel-2, NLCD, NAIP, LANDFIRE, NASS QuickStats, AMS, GAEZ, CoCoRaHS | Not used | Reasons listed one by one in DATA_LOG.md |
+| Dataset | Regions | Used for |
+| :-- | :-- | :-- |
+| NASA POWER (daily, 1991-2025) | all | Reference ET, heat, frost, wind, trends, what-if scenarios |
+| GPM IMERG (daily, 2001-2025) | all | Rainfall, heavy-rain days |
+| SMAP SPL3SMP_E (2015-2025) | all | Soil-moisture anomaly |
+| Landsat 8/9 (2018-2025) | all | Field outlines (USA), NDVI, low-cover months, flooded-field signal |
+| MODIS MOD13Q1 (2001-2025) | all | 25-year greenness; crop seasons per year (India) |
+| SRTM | all | Field tilt and elevation |
+| GRACE / GRACE-FO JPL mascons | India | Regional water-storage trend |
+| USDA SSURGO, USDA Cropland Data Layer | USA | Soil; crop history |
+| OpenET | USA | Satellite ET and model spread; anchors the water estimate |
+| gridMET | USA | Ground-informed correction of NASA POWER |
+| USGS NWIS wells | USA | Depth to groundwater |
+| IMD gridded rainfall (0.25 degree) and temperature (1 degree) | India | Ground-station correction of NASA POWER and IMERG |
+| ISRIC SoilGrids 2.0 (250 m) | India | Soil texture, organic carbon, pH |
+| FAO WaPOR v3 (300 m) | India | Satellite ET |
+| ESA WorldCover (10 m) | India | Finding cropland for the sample plots; land-cover layer |
 
-Two routes had to change during the build, both recorded in the log: CropScape timed
-out, so the crop map comes from USDA's CroplandCROS image service; and OpenET's
-field-boundary endpoint returned HTTP 400 for every request (even its own documented
-example), so field outlines are detected from Landsat instead.
+Not used, with the reason for each (ECOSTRESS, GEDI, PRISM, NLDAS/GLDAS, ERA5,
+Sentinel-2 and others): see the last section of DATA_LOG.md.
 
 ## What the data showed
 
-These came out of the pipeline, not out of assumptions:
+These came out of the pipeline, not out of assumptions.
 
-- **A weather grid alone gets frost wrong here.** NASA POWER's ~50 km cell puts the
-  frost-free season at about 134 days. Corrected with station-informed gridMET it is
-  81-93 days: valley-floor nights run about 4-5 °C colder. That is the difference
-  between teff looking safe and teff fitting in only about 70 % of years on the colder
-  fields.
-- **Real fields use less than the textbook says.** In their own alfalfa years, 13 of the
-  14 pilot fields used 68-86 % of the FAO-56 full-irrigation figure according to OpenET.
-  Each field's water estimate is scaled by its own ratio (the 14th has too few clean
-  alfalfa years, so its estimate is left unscaled and marked low confidence).
-- **Rotation alone saves a modest amount of water.** The thriftiest rotation here needs
-  about 17 % less irrigation than continuous alfalfa. Double-cropped break years save
-  almost nothing. The tool says so instead of promising more.
-- **Groundwater near the pivots is falling.** Most long-record USGS wells within 12 km
-  of each pilot field have been deepening since 1990 (for example 4 of 4 near Field 3,
-  at a median 4.5 m per decade; the median rate around the fields ranges from 0.6 to
-  5.0 m per decade). Across all 18 long-record wells in the wider area, 10 are
-  deepening significantly and 3 are rising.
-- **Hot days are increasing**, by roughly 5 to 9 more days above 32 °C per decade since
-  1991, depending on the dataset (gridMET or corrected NASA POWER) and the grid cell;
-  the trend is statistically significant in both.
-- **Satellite rainfall holds up against the ground-informed grid.** GPM IMERG gives the
-  valley 228-240 mm a year against 200-222 mm from gridMET on the same days, about
-  4-18 % more. It reads high in January and low in November (snow is hard to see from
-  orbit), so IMERG is scaled month by month to gridMET before use, and the app shows
-  both the downloaded and the used values.
-- **A trend must not straddle a change of data source.** Rain before 2001 comes from NASA
-  POWER and from 2001 from IMERG. Computed across that join, heavy-rain days looked
-  like they were "increasing"; computed on the IMERG years alone there is no clear
-  trend. Rain-based trends are therefore reported from 2001 only.
-- **The crop map is sometimes wrong.** It labels some green, irrigated pivots
-  "shrubland", "evergreen forest" or "wetland" in single years. Landsat greenness is
-  used as a second opinion and those years are flagged for the farmer to correct.
+**Weather grids need ground truth, and the error differs by place.**
+
+- *Nevada:* NASA POWER's ~50 km cell puts the frost-free season at about 134 days.
+  Corrected with station-informed gridMET it is 81-93 days: valley-floor nights run
+  4-5 °C colder because cold air pools there. That decides whether teff is safe.
+- *Punjab:* the same product counts about 70 days a year above 40 °C; India
+  Meteorological Department stations measured about 31. The global weather model does
+  not know the plain is irrigated, and its summer afternoons run up to 3.2 °C too hot.
+  Uncorrected, both heat stress and crop water demand would be overstated.
+- *Cauvery delta:* days above 38 °C drop from 34 to 10 a year in the station grid, and
+  NASA POWER's rainfall (1,060 mm) is below the rain-gauge grid (1,221 mm).
+
+**Water**
+
+- *Nevada:* in their own alfalfa years, 13 of 14 fields used 68-86 % of the textbook
+  full-irrigation figure according to OpenET; each field's estimate is scaled by its own
+  ratio. Rotation alone saves a modest amount: the thriftiest option needs about 17 %
+  less than continuous alfalfa, and the tool says so instead of promising more.
+- *Punjab:* rice-wheat needs about 1,650 mm of irrigation delivered a year on a sample
+  plot, of which roughly 800 mm is water paddy takes only to be puddled and kept flooded.
+  Maize-wheat-moong needs about 1,000 mm. Adding summer moong to rice-wheat *raises* the
+  need, because it grows in the hottest, driest months.
+- *Cauvery delta:* two rice crops (kuruvai + thaladi) need about 1,560 mm delivered; a
+  single samba crop with a pulse on leftover moisture about 720 mm.
+- *Long-term water:* most long-record USGS wells near the Nevada pivots have been
+  deepening since 1990 (median 0.6-5.0 m per decade). GRACE shows stored water over the
+  Punjab region falling by about 3.8 cm a year since 2002, and no fall over the Cauvery
+  delta region (+0.7 cm a year).
+
+**Reading the record honestly**
+
+- The USDA crop map sometimes labels green, irrigated pivots "shrubland" or "forest".
+  Landsat greenness is the second opinion and doubtful years are flagged.
+- Where no crop map exists, greenness peaks give the number of crops a year (two around
+  Sangrur, greenest in February and August), which is enough to check the rotation the
+  farmer selects and to choose a sensible starting point when they have not said.
+- A trend must not straddle a change of data source: rain before 2001 comes from NASA
+  POWER and from 2001 from IMERG, so rain-based trends are reported from 2001 only.
+- Satellite rainfall is scaled month by month to the ground grid, and the app shows both
+  the downloaded and the used values.
 
 ## Limitations
 
-- One pilot valley, 14 fields. The crop calendars and class scores are written for
-  Great Basin irrigated forage and are **not calibrated locally**.
-- Field outlines are the largest circle inside each irrigated footprint on Landsat, not
-  surveyed boundaries.
-- No prices, yields, costs, pests, diseases, herbicide history, irrigation system or
-  water rights are known to the tool. The forage/income score is a rough ordering from
-  class scores and is always marked low confidence.
-- Water figures are crop demand, not pumped water, and rest on gridded weather and
-  tabulated crop coefficients. Teff and safflower water use at this elevation is poorly
-  documented.
-- SMAP sees the top ~5 cm over 9 km pixels that are mostly desert; it describes the
-  valley, not a pivot. NDVI shows green cover, not soil health.
+- Three pilot boxes. Crop calendars and class scores are written from published
+  references and **have not been reviewed by a local agronomist**.
+- Nevada field outlines are detected from Landsat; Indian "plots" are 300 m blocks of
+  cropland, a neighbourhood of small fields rather than one owner's parcel.
+- In India the tool cannot see which crop was grown, only how many seasons. Cloud in the
+  monsoon hides crops, and a short pulse on leftover moisture may not register.
+- Soil in India comes from a 250 m global model with no salinity layer.
+- GRACE describes a region about 300 km across, not a village or a tubewell.
+- No prices, yields, costs, pests, diseases, herbicide history, irrigation system, canal
+  schedule or water rights are known to the tool. The income score is a rough ordering
+  from class scores and is always marked low confidence.
+- The flooding-water figure for paddy is a typical value, not a measurement; sandy soils
+  take more and part of it seeps back to groundwater.
 - The what-if sliders shift the historical weather record uniformly. They are a
   sensitivity test, not a climate projection.
-- The app's basemap needs an internet connection.
-- No farmer or agronomist has reviewed the rotation library yet. That is the next step
-  before anyone acts on it.
+- A drawn field takes weather, soil moisture and long-term water from the nearest pilot
+  field, has no satellite water-use record, and is scored with lower confidence.
+- The basemap needs an internet connection.
 
 ## Tests
 
-`python tasks.py test` runs 48 tests: FAO-56 reference ET against the worked examples in
+`python tasks.py test` runs 49 tests: FAO-56 reference ET against the worked examples in
 the FAO paper, effective rain, frost and trend functions, area-weighted zonal
-statistics, grid indexing, crop-history interpretation, knowledge-base validation, each
-scoring criterion, constraints, scenarios, the wording rule (the output never tells the
-farmer what to plant), and the API against the real processed data including a drawn
-field.
+statistics, crop-history interpretation, knowledge-base validation for every region,
+each scoring criterion, constraints, scenarios, the annual-cropping rules, the wording
+rule (the output never tells the farmer what to plant), and
+`tests/test_parity.py`, which bundles the browser engine with esbuild, runs it in Node on
+the exported data and compares it with the Python reference: scores to three decimals,
+millimetres to within one, every sentence word for word.
 
 ## Credits
 
-Data: NASA POWER (NASA LaRC); GPM IMERG (NASA GES DISC); SMAP (NASA NSIDC DAAC); Landsat 8/9 (USGS and NASA, via
-Microsoft Planetary Computer); MODIS MOD13Q1 (NASA LP DAAC, via ORNL DAAC); SRTM (NASA
-JPL, LP DAAC); USDA NRCS SSURGO; USDA NASS Cropland Data Layer; OpenET; USGS National
-Water Information System; gridMET (Abatzoglou 2013). Basemap: Sentinel-2 cloudless by
-EOX (contains modified Copernicus Sentinel data 2016) and OpenStreetMap contributors.
-Methods: FAO Irrigation and Drainage Papers 56 and 33; USDA NRCS National Engineering
-Handbook Part 623. Full citations in DATA_LOG.md and ROTATION_KNOWLEDGE.md.
+Data: NASA POWER (NASA LaRC); GPM IMERG (NASA GES DISC); SMAP (NASA NSIDC DAAC); Landsat
+8/9 (USGS and NASA, via Microsoft Planetary Computer); MODIS MOD13Q1 (NASA LP DAAC);
+SRTM (NASA JPL, LP DAAC); GRACE and GRACE-FO mascons (NASA JPL, PO.DAAC); USDA NRCS
+SSURGO; USDA NASS Cropland Data Layer; OpenET; USGS National Water Information System;
+gridMET (Abatzoglou 2013); India Meteorological Department gridded rainfall and
+temperature (Pai et al. 2014; Srivastava et al. 2009; read with imdlib); ISRIC SoilGrids
+2.0; FAO WaPOR v3; ESA WorldCover 2021. Basemap: Sentinel-2 cloudless by EOX (contains
+modified Copernicus Sentinel data 2016) and OpenStreetMap contributors. Methods: FAO
+Irrigation and Drainage Papers 56 and 33; USDA NRCS National Engineering Handbook Part
+623. Full citations in DATA_LOG.md and ROTATION_KNOWLEDGE.md.
 
 NASA does not endorse this tool or any non-U.S. Government entity.
 

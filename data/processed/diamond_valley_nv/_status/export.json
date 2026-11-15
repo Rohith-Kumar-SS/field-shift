@@ -1,0 +1,23 @@
+{
+  "source": "export",
+  "title": "Static files for the web app",
+  "tier": "MUST",
+  "status": "ok",
+  "fetched": "14 fields, 18 map layers, atlas for drawn fields",
+  "resolution": "as the sources",
+  "date_range": "",
+  "credit": "Repackaged from data/processed by this project.",
+  "access": "pipeline/s40_export.py",
+  "message": "14 fields exported to frontend/public/data/diamond_valley_nv (5.6 MB)",
+  "action_needed": "",
+  "sanity": {
+    "passed": true,
+    "bytes": 5640203
+  },
+  "outputs": [
+    "frontend/public/data/diamond_valley_nv/"
+  ],
+  "is_demo_data": false,
+  "notes": "",
+  "generated_at": "2026-11-15T00:37:26Z"
+}

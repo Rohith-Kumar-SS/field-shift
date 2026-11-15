@@ -31,7 +31,7 @@ MODULES = {
     "soilgrids": "s04_soilgrids", "cdl": "s05_cdl", "landsat": "s06_landsat", "openet": "s07_openet",
     "wapor": "s07_wapor", "srtm": "s08_srtm", "modis": "s09_modis", "modis_pc": "s09_modis_pc",
     "nwis": "s10_nwis", "grace": "s10_grace", "indicators": "s20_indicators", "overlays": "s30_overlays",
-    "datalog": "data_log",
+    "export": "s40_export", "datalog": "data_log",
 }
 
 
@@ -47,7 +47,7 @@ def main(argv: list[str]) -> int:
     from .common import PILOT, ensure_dirs, run_source
 
     ensure_dirs()
-    steps = argv or (PILOT["steps"] + ["datalog"])
+    steps = argv or (PILOT["steps"] + ["export", "datalog"])
     unknown = [s for s in steps if s not in MODULES]
     if unknown:
         print(f"Unknown step(s): {', '.join(unknown)}. Steps for {PILOT['id']}: {', '.join(PILOT['steps'])}")

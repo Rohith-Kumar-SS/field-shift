@@ -65,35 +65,36 @@ def field_precip(power_daily: pd.DataFrame, imerg: pd.DataFrame | None, bias: di
     return s.fillna(base)
 
 
-def prepare_daily(daily: pd.DataFrame, lat: float, field_elev_m: float, grid_elev_m: float,
-                  scenario: Scenario = Scenario(), precip: pd.Series | None = None,
-                  bias: dict | None = None) -> pd.DataFrame:
-    """Daily frame with locally corrected, scenario-adjusted weather and FAO-56 reference ET.
+def base_frame(daily: pd.DataFrame, field_elev_m: float, grid_elev_m: float,
+               precip: pd.Series | None = None, bias: dict | None = None) -> pd.DataFrame:
+    """Locally corrected daily weather, before any what-if scenario.
+
+    Columns: date, tmax, tmin, tdew_raw (dew point moved to the field's elevation, not yet
+    capped by Tmin), wind, rs, precip. This is exactly what the static site ships per field
+    (pipeline/s40_export.py), so the browser and this module start from the same numbers.
 
     Local correction of the NASA POWER grid cell, in order of preference:
-      1. `bias` given: month-by-month delta from gridMET (4 km, station-informed) for Tmax and
-         Tmin, and a monthly ratio for precipitation;
+      1. `bias` given: month-by-month delta from a ground-informed grid (gridMET in the USA,
+         IMD station grids in India) for Tmax and Tmin, and a monthly ratio for precipitation;
       2. otherwise: a plain 6.5 degC/km lapse-rate shift from the cell's mean elevation.
     """
-    sc = scenario.clamp()
     d = daily.sort_values("date").reset_index(drop=True)
     adj = LAPSE_RATE * (grid_elev_m - field_elev_m)
     out = pd.DataFrame({"date": pd.to_datetime(d["date"])})
-    out["year"], out["month"], out["doy"] = out["date"].dt.year, out["date"].dt.month, out["date"].dt.dayofyear
-    month = out["month"].to_numpy()
+    month = out["date"].dt.month.to_numpy()
+    doy = out["date"].dt.dayofyear
     if bias:
         dmax, dmin = _monthly_lookup(bias["tmax_delta"], month), _monthly_lookup(bias["tmin_delta"], month)
     else:
         dmax = dmin = adj
-    out["tmax"] = d["T2M_MAX"].to_numpy(float) + dmax + sc.temp_c
-    out["tmin"] = d["T2M_MIN"].to_numpy(float) + dmin + sc.temp_c
-    out["tmean"] = (out["tmax"] + out["tmin"]) / 2.0
+    out["tmax"] = d["T2M_MAX"].to_numpy(float) + dmax
+    out["tmin"] = d["T2M_MIN"].to_numpy(float) + dmin
     # dew point: observed humidity, moved to the field elevation with the temperature
-    out["tdew"] = np.minimum(d["T2MDEW"].to_numpy(float) + adj, out["tmin"])
+    out["tdew_raw"] = d["T2MDEW"].to_numpy(float) + adj
     out["wind"] = d["WS2M"].to_numpy(float)
     rs = d["ALLSKY_SFC_SW_DWN"].to_numpy(float)
     if np.isnan(rs).any():      # fill rare gaps with that calendar day's long-term mean
-        clim = pd.Series(rs).groupby(out["doy"]).transform("mean").to_numpy()
+        clim = pd.Series(rs).groupby(doy).transform("mean").to_numpy()
         rs = np.where(np.isnan(rs), clim, rs)
     out["rs"] = rs
     if precip is None:
@@ -102,10 +103,33 @@ def prepare_daily(daily: pd.DataFrame, lat: float, field_elev_m: float, grid_ele
             base_p = base_p * _monthly_lookup(bias["precip_ratio"], month)
     else:
         base_p = precip.reindex(out["date"]).to_numpy(float)
-    out["precip"] = np.nan_to_num(base_p, nan=0.0) * (1.0 + sc.rain_pct / 100.0)
+    out["precip"] = np.nan_to_num(base_p, nan=0.0)
+    return out
+
+
+def apply_scenario(base: pd.DataFrame, lat: float, field_elev_m: float,
+                   scenario: Scenario = Scenario()) -> pd.DataFrame:
+    """Scenario-adjusted daily frame with FAO-56 reference ET, from base_frame() output."""
+    sc = scenario.clamp()
+    out = pd.DataFrame({"date": pd.to_datetime(base["date"]).reset_index(drop=True)})
+    out["year"], out["month"], out["doy"] = out["date"].dt.year, out["date"].dt.month, out["date"].dt.dayofyear
+    out["tmax"] = base["tmax"].to_numpy(float) + sc.temp_c
+    out["tmin"] = base["tmin"].to_numpy(float) + sc.temp_c
+    out["tmean"] = (out["tmax"] + out["tmin"]) / 2.0
+    out["tdew"] = np.minimum(base["tdew_raw"].to_numpy(float), out["tmin"])
+    out["wind"] = base["wind"].to_numpy(float)
+    out["rs"] = base["rs"].to_numpy(float)
+    out["precip"] = base["precip"].to_numpy(float) * (1.0 + sc.rain_pct / 100.0)
     out["et0"] = et0_fao56(out["tmax"], out["tmin"], out["tdew"], out["wind"], out["rs"],
                            lat, field_elev_m, out["doy"])
     return out
+
+
+def prepare_daily(daily: pd.DataFrame, lat: float, field_elev_m: float, grid_elev_m: float,
+                  scenario: Scenario = Scenario(), precip: pd.Series | None = None,
+                  bias: dict | None = None) -> pd.DataFrame:
+    """Daily frame with locally corrected, scenario-adjusted weather and FAO-56 reference ET."""
+    return apply_scenario(base_frame(daily, field_elev_m, grid_elev_m, precip, bias), lat, field_elev_m, scenario)
 
 
 def summarise(prep: pd.DataFrame, baseline: tuple[int, int] = BASELINE, heavy_rain_mm: float = HEAVY_RAIN_MM,

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { GROUP_COLOR, GROUP_LABEL, MONTHS, fmt, mmToIn, type Criterion, type ScoreResult, type SequenceYear, type Strategy } from "../api";
-import { Confidence } from "./ui";
+import { GROUP_COLOR, fmt, groupLegend, mm, type Dict, type RegionData } from "../data";
+import { useFlip } from "../motion";
+import { Confidence, Num, RotationRing } from "./ui";
 
 const PANEL_NAME: Record<string, string> = {
   water: "Water",
@@ -8,90 +9,21 @@ const PANEL_NAME: Record<string, string> = {
   cover: "Greenness and cover",
   soil: "Soil",
   history: "Crop history",
-  groundwater: "Groundwater",
+  groundwater: "Long-term water",
 };
 
-/** contiguous runs of months, e.g. [1,2,3,9,10] -> [[1,3],[9,10]] */
-function runs(months: number[]): [number, number][] {
-  const m = [...months].sort((a, b) => a - b);
-  const out: [number, number][] = [];
-  m.forEach((v) => {
-    const last = out[out.length - 1];
-    if (last && v === last[1] + 1) last[1] = v;
-    else out.push([v, v]);
-  });
-  return out;
-}
+type Criteria = { id: string; label: string }[];
 
-function arc(cx: number, cy: number, r: number, a0: number, a1: number): string {
-  const p = (a: number) => {
-    const rad = ((a - 90) * Math.PI) / 180;
-    return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
-  };
-  const [x0, y0] = p(a0);
-  const [x1, y1] = p(a1);
-  return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
-}
-
-/**
- * The rotation drawn as a centre pivot seen from above: one lap of the ring is the whole
- * rotation, each coloured arc is a crop in the months it occupies the field, and the
- * pale gaps are months with only stubble or bare soil.
- */
-export function RotationRing({ sequence, score, size = 132 }: { sequence: SequenceYear[]; score?: number; size?: number }) {
-  const n = sequence.length;
-  const c = size / 2;
-  const r = size / 2 - 13;
-  const total = n * 12;
-  const pad = 0.7;
-  return (
-    <svg className="ring" width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img"
-      aria-label={`${n}-year rotation: ${sequence.map((y) => y.label).join(", then ")}`}>
-      <circle cx={c} cy={c} r={r} className="ring-track" strokeWidth={15} fill="none" />
-      {sequence.map((y, i) =>
-        y.entries.map((e, j) =>
-          runs(e.months).map(([m0, m1], k) => {
-            const a0 = ((i * 12 + (m0 - 1)) / total) * 360 + pad;
-            const a1 = ((i * 12 + m1) / total) * 360 - pad;
-            return (
-              <path key={`${i}-${j}-${k}`} d={arc(c, c, r, a0, Math.max(a1, a0 + 0.5))} stroke={GROUP_COLOR[e.group] ?? GROUP_COLOR.unknown}
-                strokeWidth={15} fill="none" strokeDasharray={e.group === "unknown" ? "3 2" : undefined}>
-                <title>{`Year ${y.year}${y.calendar_year ? ` (${y.calendar_year})` : ""}: ${e.label}, ${MONTHS[m0 - 1]}–${MONTHS[m1 - 1]}`}</title>
-              </path>
-            );
-          }),
-        ),
-      )}
-      {sequence.map((_, i) => {
-        const a = ((i * 12) / total) * 360 - 90;
-        const rad = (a * Math.PI) / 180;
-        return <line key={i} x1={c + (r - 10) * Math.cos(rad)} y1={c + (r - 10) * Math.sin(rad)} x2={c + (r + 10) * Math.cos(rad)} y2={c + (r + 10) * Math.sin(rad)} className="ring-tick" />;
-      })}
-      {score !== undefined && (
-        <>
-          <text x={c} y={c + 4} className="ring-score" textAnchor="middle">
-            {Math.round(score * 100)}
-          </text>
-          <text x={c} y={c + 21} className="ring-sub" textAnchor="middle">
-            of 100
-          </text>
-        </>
-      )}
-    </svg>
-  );
-}
-
-export function RingLegend({ strategies }: { strategies: Strategy[] }) {
-  const groups = Array.from(new Set(strategies.flatMap((s) => s.sequence.flatMap((y) => y.entries.map((e) => e.group)))));
-  const order = Object.keys(GROUP_LABEL).filter((g) => groups.includes(g));
+function RingLegend({ strategies, region }: { strategies: Dict[]; region: RegionData }) {
+  const groups = Array.from(new Set<string>(strategies.flatMap((s) => s.sequence.flatMap((y: Dict) => y.entries.map((e: Dict) => e.group)))));
   return (
     <div className="ring-legend">
       <span className="ring-legend-how">One lap of a ring = the whole rotation. Pale gaps = stubble or bare soil.</span>
       <ul>
-        {order.map((g) => (
-          <li key={g}>
-            <i style={{ background: GROUP_COLOR[g] }} />
-            {GROUP_LABEL[g]}
+        {groupLegend(region.kb, groups).map((g) => (
+          <li key={g.group}>
+            <i style={{ background: g.color }} />
+            {g.label}
           </li>
         ))}
       </ul>
@@ -99,7 +31,7 @@ export function RingLegend({ strategies }: { strategies: Strategy[] }) {
   );
 }
 
-function ScoreBars({ s, criteria, weights }: { s: Strategy; criteria: Criterion[]; weights: Record<string, number> }) {
+function ScoreBars({ s, criteria, weights }: { s: Dict; criteria: Criteria; weights: Record<string, number> }) {
   const shown = criteria.filter((c) => (weights[c.id] ?? 0) > 0.0005).sort((a, b) => (weights[b.id] ?? 0) - (weights[a.id] ?? 0));
   return (
     <ul className="bars" aria-label="Score on each of your priorities">
@@ -119,7 +51,7 @@ function ScoreBars({ s, criteria, weights }: { s: Strategy; criteria: Criterion[
   );
 }
 
-function CriterionRow({ c, s, onEvidence }: { c: Criterion; s: Strategy; onEvidence: (panel: string) => void }) {
+function CriterionRow({ c, s, onEvidence }: { c: { id: string; label: string }; s: Dict; onEvidence: (panel: string) => void }) {
   const [open, setOpen] = useState(false);
   const d = s.criteria[c.id];
   return (
@@ -135,26 +67,28 @@ function CriterionRow({ c, s, onEvidence }: { c: Criterion; s: Strategy; onEvide
           <p className="crit-formula">
             <strong>How it is worked out:</strong> {d.formula}
           </p>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>What went in</th>
-                <th>Value</th>
-                <th>Where it comes from</th>
-              </tr>
-            </thead>
-            <tbody>
-              {d.inputs.map((i) => (
-                <tr key={i.label}>
-                  <td>{i.label}</td>
-                  <td className="num">
-                    {i.value === null || i.value === undefined ? "not available" : typeof i.value === "number" ? fmt(i.value, Number.isInteger(i.value) ? 0 : 2) : String(i.value)} {i.unit}
-                  </td>
-                  <td>{i.source}</td>
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>What went in</th>
+                  <th>Value</th>
+                  <th>Where it comes from</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {d.inputs.map((i: Dict) => (
+                  <tr key={i.label}>
+                    <td>{i.label}</td>
+                    <td className="num">
+                      {i.value === null || i.value === undefined ? "not available" : typeof i.value === "number" ? fmt(i.value, Number.isInteger(i.value) ? 0 : 2) : String(i.value)} {i.unit}
+                    </td>
+                    <td>{i.source}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           <p className="crit-note">
             <Confidence level={d.confidence} /> {d.note}
           </p>
@@ -170,37 +104,41 @@ function CriterionRow({ c, s, onEvidence }: { c: Criterion; s: Strategy; onEvide
   );
 }
 
-function StrategyCard({ s, result, criteria, open, onToggle, onEvidence }: {
-  s: Strategy; result: ScoreResult; criteria: Criterion[]; open: boolean; onToggle: () => void; onEvidence: (panel: string) => void;
+function StrategyCard({ s, result, criteria, imperial, open, onToggle, onEvidence, flipRef }: {
+  s: Dict; result: Dict; criteria: Criteria; imperial: boolean; open: boolean; onToggle: () => void; onEvidence: (panel: string) => void; flipRef: (el: HTMLElement | null) => void;
 }) {
-  const existing = result.strategies.find((x) => x.is_existing)!;
+  const existing = result.strategies.find((x: Dict) => x.is_existing)!;
   const diff = s.water.irrigation_mm - existing.water.irrigation_mm;
   const [checked, setChecked] = useState<Record<number, boolean>>({});
+  const n = s.sequence.length;
   return (
-    <article className={`strategy ${s.rank === 1 ? "is-top" : ""} ${s.is_existing ? "is-existing" : ""}`}>
+    <article ref={flipRef} className={`strategy ${s.rank === 1 ? "is-top" : ""} ${s.is_existing ? "is-existing" : ""}`}>
       <div className="strategy-main">
         <div className="strategy-ring">
           <RotationRing sequence={s.sequence} score={s.total} />
-          <div className="ring-caption">{s.sequence.length}-year cycle</div>
+          <div className="ring-caption">{n === 1 ? "every year" : `${n}-year cycle`}</div>
         </div>
         <div className="strategy-text">
           <div className="strategy-tags">
-            <span className="rank">
-              {s.rank === 1 ? "Scores highest" : `Ranks ${s.rank} of ${result.strategies.length}`}
-            </span>
+            <span className="rank">{s.rank === 1 ? "Scores highest" : `Ranks ${s.rank} of ${result.strategies.length}`}</span>
             {s.is_existing && <span className="tag-existing">What you do now</span>}
             <Confidence level={s.confidence.level} />
           </div>
           <h3>{s.name}</h3>
           <p className="strategy-summary">{s.summary}</p>
           <p className="strategy-water">
-            Irrigation need about <strong>{fmt(s.water.irrigation_mm)} mm</strong> ({fmt(mmToIn(s.water.irrigation_mm), 1)} in) a year
+            Irrigation need about{" "}
+            <strong>
+              <Num value={s.water.irrigation_mm} /> mm
+            </strong>
+            {imperial ? ` (${fmt(s.water.irrigation_mm / 25.4, 1)} in)` : ""} a year
             {!s.is_existing && Math.abs(diff) >= 5 && (
               <>
                 {" "}
                 · <strong>{fmt(Math.abs(diff))} mm {diff < 0 ? "less" : "more"}</strong> than now
               </>
             )}
+            {s.water.extra_pumping_mm > 0 && <span className="water-split"> · {fmt(s.water.extra_pumping_mm)} mm of it keeps paddy flooded</span>}
           </p>
           <ScoreBars s={s} criteria={criteria} weights={result.weights} />
         </div>
@@ -214,7 +152,7 @@ function StrategyCard({ s, result, criteria, open, onToggle, onEvidence }: {
           <section>
             <h4>{s.is_existing ? "Why it is shown" : "Why it was suggested for this field"}</h4>
             <ul className="why">
-              {s.why.map((w, i) => (
+              {s.why.map((w: Dict, i: number) => (
                 <li key={i}>
                   {w.text}{" "}
                   <button className="link-btn" onClick={() => onEvidence(w.panel)}>
@@ -223,7 +161,7 @@ function StrategyCard({ s, result, criteria, open, onToggle, onEvidence }: {
                 </li>
               ))}
             </ul>
-            {s.assumptions?.map((a) => (
+            {s.assumptions?.map((a: string) => (
               <p className="assumption" key={a}>
                 Assumption: {a}
               </p>
@@ -233,13 +171,13 @@ function StrategyCard({ s, result, criteria, open, onToggle, onEvidence }: {
           <section>
             <h4>Year by year</h4>
             <ol className="seq">
-              {s.sequence.map((y) => (
+              {s.sequence.map((y: Dict) => (
                 <li key={y.year}>
-                  <span className="seq-year">{y.calendar_year ?? `Year ${y.year}`}</span>
+                  <span className="seq-year">{y.calendar_year ?? (n === 1 ? "Every year" : `Year ${y.year}`)}</span>
                   <span className="seq-crops">
                     {y.entries
-                      .filter((e, i, arr) => arr.findIndex((x) => x.crop === e.crop) === i)
-                      .map((e) => (
+                      .filter((e: Dict, i: number, arr: Dict[]) => arr.findIndex((x) => x.crop === e.crop) === i)
+                      .map((e: Dict) => (
                         <span className="seq-crop" key={e.crop}>
                           <i style={{ background: GROUP_COLOR[e.group] ?? GROUP_COLOR.unknown }} />
                           {e.label}
@@ -257,7 +195,7 @@ function StrategyCard({ s, result, criteria, open, onToggle, onEvidence }: {
             <section>
               <h4>What it may offer</h4>
               <ul className="plain">
-                {s.benefits.map((b) => (
+                {s.benefits.map((b: string) => (
                   <li key={b}>{b}</li>
                 ))}
               </ul>
@@ -265,7 +203,7 @@ function StrategyCard({ s, result, criteria, open, onToggle, onEvidence }: {
             <section>
               <h4>Risks to review locally</h4>
               <ul className="plain risks">
-                {s.risks.map((b) => (
+                {s.risks.map((b: string) => (
                   <li key={b}>{b}</li>
                 ))}
               </ul>
@@ -275,7 +213,7 @@ function StrategyCard({ s, result, criteria, open, onToggle, onEvidence }: {
           <section>
             <h4>What this tool does not know</h4>
             <ul className="plain gaps">
-              {s.info_gaps.map((b) => (
+              {s.info_gaps.map((b: string) => (
                 <li key={b}>{b}</li>
               ))}
             </ul>
@@ -284,7 +222,7 @@ function StrategyCard({ s, result, criteria, open, onToggle, onEvidence }: {
           <section className="verify">
             <h4>Check with a local expert before acting</h4>
             <ul>
-              {s.verify.map((v, i) => (
+              {s.verify.map((v: string, i: number) => (
                 <li key={v}>
                   <label>
                     <input type="checkbox" checked={!!checked[i]} onChange={(e) => setChecked({ ...checked, [i]: e.target.checked })} />
@@ -309,7 +247,7 @@ function StrategyCard({ s, result, criteria, open, onToggle, onEvidence }: {
               Data confidence: <Confidence level={s.confidence.level} />
             </h4>
             <ul className="plain">
-              {s.confidence.reasons.map((r) => (
+              {s.confidence.reasons.map((r: string) => (
                 <li key={r}>{r}</li>
               ))}
             </ul>
@@ -320,8 +258,8 @@ function StrategyCard({ s, result, criteria, open, onToggle, onEvidence }: {
   );
 }
 
-function CompareTable({ result, criteria }: { result: ScoreResult; criteria: Criterion[] }) {
-  const strategies = result.strategies;
+function CompareTable({ result, criteria }: { result: Dict; criteria: Criteria }) {
+  const strategies: Dict[] = result.strategies;
   return (
     <div className="table-scroll">
       <table className="compare">
@@ -331,6 +269,7 @@ function CompareTable({ result, criteria }: { result: ScoreResult; criteria: Cri
             {strategies.map((s) => (
               <th key={s.id} scope="col">
                 {s.short}
+                {s.is_existing && <span className="weight">now</span>}
               </th>
             ))}
           </tr>
@@ -388,15 +327,17 @@ function CompareTable({ result, criteria }: { result: ScoreResult; criteria: Cri
   );
 }
 
-export default function Strategies({ result, criteria, loading, onEvidence }: {
-  result: ScoreResult; criteria: Criterion[]; loading: boolean; onEvidence: (panel: string) => void;
-}) {
+export default function Strategies({ result, region, onEvidence }: { result: Dict; region: RegionData; onEvidence: (panel: string) => void }) {
   const [open, setOpen] = useState<string | null>(null);
   const [view, setView] = useState<"cards" | "table">("cards");
-  const ordered = [...result.strategies].sort((a, b) => a.rank - b.rank);
+  const flip = useFlip();
+  const criteria: Criteria = Object.entries(region.kb.criteria).map(([id, c]) => ({ id, label: c.label }));
+  const ordered: Dict[] = [...result.strategies].sort((a, b) => a.rank - b.rank);
   const sc = result.scenario;
+  const imperial = Boolean(region.region.imperial);
+  const frost = Boolean(region.region.has_frost);
   return (
-    <section className={`block strategies ${loading ? "is-loading" : ""}`} aria-busy={loading}>
+    <section className="block strategies" id="compare">
       <header className="block-head">
         <h2>Compare rotations</h2>
         <div className="seg" role="tablist" aria-label="How to show the comparison">
@@ -409,22 +350,25 @@ export default function Strategies({ result, criteria, loading, onEvidence }: {
         </div>
       </header>
 
-      <p className="statement">{result.statement}</p>
+      <p className="statement" aria-live="polite">{result.statement}</p>
       {!sc.is_baseline && (
         <p className="scenario-note">
           What-if weather is on: {sc.temp_c > 0 ? `+${sc.temp_c} °C` : `${sc.temp_c} °C`}, rain {sc.rain_pct > 0 ? "+" : ""}
-          {sc.rain_pct} %. Reference ET {fmt(result.climate.et0_annual)} mm (normally {fmt(result.climate_baseline.et0_annual)}), frost-free season{" "}
-          {fmt(result.climate.frost_free_median)} days (normally {fmt(result.climate_baseline.frost_free_median)}). A sensitivity test, not a forecast.
+          {sc.rain_pct} %. The weather's demand becomes {mm(result.climate.et0_annual, imperial)} a year (normally {fmt(result.climate_baseline.et0_annual)})
+          {frost
+            ? `, and the frost-free season ${fmt(result.climate.frost_free_median)} days (normally ${fmt(result.climate_baseline.frost_free_median)})`
+            : `, with ${fmt(result.climate.hot_days)} days above ${result.climate.hot_day_c} °C (normally ${fmt(result.climate_baseline.hot_days)})`}
+          . A sensitivity test, not a forecast.
         </p>
       )}
       <p className="disclaimer-inline">{result.disclaimer}</p>
 
       {view === "cards" ? (
         <>
-          <RingLegend strategies={result.strategies} />
+          <RingLegend strategies={result.strategies} region={region} />
           <div className="strategy-list">
             {ordered.map((s) => (
-              <StrategyCard key={s.id} s={s} result={result} criteria={criteria} open={open === s.id} onToggle={() => setOpen(open === s.id ? null : s.id)} onEvidence={onEvidence} />
+              <StrategyCard key={s.id} s={s} result={result} criteria={criteria} imperial={imperial} open={open === s.id} onToggle={() => setOpen(open === s.id ? null : s.id)} onEvidence={onEvidence} flipRef={flip(s.id)} />
             ))}
           </div>
         </>

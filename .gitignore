@@ -36,3 +36,9 @@ Thumbs.db
 .vscode/
 .idea/
 *.log
+
+# --- the challenge kit the project was built from (kept locally, not part of this repo) ---
+/_NASA__-*.md
+
+# --- deploy scratch ---
+/deploy/.site/

@@ -1,46 +1,491 @@
 # ROTATION_KNOWLEDGE
 
-The rotation knowledge base behind the Rotation Scenario Explorer. **Generated from `knowledge/rotation_knowledge.yaml` by `python -m engine.knowledge_doc`; edit the YAML, not this file.**
+The rotation knowledge bases behind the Rotation Scenario Explorer, one per pilot region. **Generated from `knowledge/<region>.yaml` by `python -m engine.knowledge_doc`; edit the YAML, not this file.**
 
 ## How to read it
 
 - Every value is either taken from a cited reference or is a class score assigned by this project, with the reasoning given. Entries tagged PROJECT are judgments, not measurements.
-- Class scores run from 0 (none / worst) to 1 (most / best). They are **not calibrated to Diamond Valley** and each is a prompt for local review.
+- Class scores run from 0 (none / worst) to 1 (most / best). They are **not calibrated locally and have not been reviewed by a local agronomist**: each is a prompt for local review.
 - Kc is the monthly crop coefficient on a grass reference (FAO-56): crop water demand = Kc x reference ET.
 - Cover is the share of the soil surface protected by canopy, stubble or residue.
-- Written for irrigated forage systems of the Great Basin (cold desert, about 1,800 m). Do not reuse the crop calendars elsewhere without local review.
+
+---
+
+# Region: `cauvery_delta_tn`
+
+Written for canal-irrigated paddy land of the old Cauvery delta (about 30 m above sea level, heavy clay soils, roughly 1,000-1,200 mm of rain of which about half falls in October-December). Seasons follow TNAU's Crop Production Guide: kuruvai (June-September), samba (August-January), thaladi (October-February) and rice-fallow crops afterwards.
+
+- Existing rotation: **chosen by the farmer (default suggested from the number of green seasons seen from space)**
+- Water yardstick: **kuruvai + thaladi rice**
+- Hot day: above **38 °C**; heavy-rain day: **50 mm** or more
 
 ## How each priority is scored
 
 | Priority | Formula | Details |
 | :-- | :-- | :-- |
-| Save water | `score = 2 x (1 - irrigation need / full-alfalfa irrigation need)`, limited to 0-1 | Irrigation need = sum over months of `Kc x reference ET x field factor` minus effective rain (USDA-SCS method), averaged over the rotation. Reference ET is FAO-56 Penman-Monteith from NASA POWER daily weather, bias-corrected to gridMET. The field factor is the median ratio of OpenET satellite ET to the textbook figure in that field's own alfalfa years (limited to 0.6-1.15; 1.0 if there is no OpenET record). 0 = as thirsty as full-season alfalfa on that field, 1 = half the water or less. |
-| Keep soil covered | `score = sum over months of (risk weight x share of soil covered)` | Risk weights sum to 1 over the year. They combine windy days (daily mean wind >= 4.5 m/s at 2 m, NASA POWER) scaled by the soil's wind-erodibility index (SSURGO), and heavy-rain days (>= 10 mm) scaled by field tilt (SRTM) and the K factor (SSURGO). Cover comes from each crop's monthly cover table; months nobody occupies keep half of the previous month's cover as residue, never below 0.1. |
-| Nitrogen from legumes | legume year = its `n_score`; first year after alfalfa 0.6; second 0.3; a legume cover crop adds up to 0.5 | Averaged over the rotation. |
+| Save water | `score = 2 x (1 - irrigation to deliver / kuruvai + thaladi rice irrigation to deliver)`, limited to 0-1 | Irrigation to deliver = sum over months of `Kc x reference ET x field factor` minus effective rain (USDA-SCS method), plus the water a paddy field takes to be puddled and kept flooded (`extra_water_mm`, zero for every other crop), averaged over the rotation. Reference ET is FAO-56 Penman-Monteith from NASA POWER daily weather, corrected month by month to a ground-station grid. The field factor is 1.0 unless the region has a crop map and satellite ET to anchor it. 0 = as thirsty as kuruvai + thaladi rice on that field, 1 = half the water or less. |
+| Keep soil covered | `score = sum over months of (risk weight x share of soil covered)` | Risk weights sum to 1 over the year. They combine windy days (daily mean wind >= 4.5 m/s at 2 m) scaled by the soil's wind-erodibility index, and heavy-rain days (>= 50 mm) scaled by field tilt (SRTM) and the soil K factor. Cover comes from each crop's monthly cover table; months nobody occupies keep half of the previous month's cover as residue, never below 0.1. |
+| Nitrogen from legumes | `sum of n_score x share of the crop's season`, limited to 1 | Averaged over the rotation. |
 | Build organic matter | `sum of om_score x share of the crop's season - 0.08 per sowing` | Averaged over the rotation. Class scores only: organic matter cannot be seen from space. |
-| Break pest cycles | `0.45 x break + 0.35 x diversity + 0.20 x stand age` | Break: 0 if alfalfa follows alfalfa, 0.6 for a one-year gap, 1.0 for two or more. Diversity: (number of plant groups - 1) / 3. Stand age: 1.0 up to 5 years, falling to 0 at 10. |
-| Forage and income | `sum of value_score x share of season x market factor`, reduced by water shortage | Market factor: established 1.0; niche 0.5 / 0.8 / 1.0 and uncertain 0.2 / 0.5 / 0.8 for the three market settings. Where a year needs more irrigation than the farmer's stated supply, relative yield is `1 - Ky x (1 - ETa / ETc)` (FAO-33). No prices are used. |
-| Drought and heat resilience | `0.5 x drought_tolerance + 0.5 x (1 - days above the crop's heat limit in its season / 45)` | Weighted by each crop's share of the year, averaged over the rotation. |
-| Easy to carry out | `0.45 x season fit + 0.30 x equipment available + 0.25 x (1 - establishment risk)`, minus 0.05 per extra sowing in a year | Season fit = share of the last 30 years whose frost-free season was at least as long as the crop needs. |
+| Break pest cycles | `0.35 x diversity + 0.30 x change + 0.35 x hand-overs` | Diversity: (number of plant groups - 1) / 3. Change: share of crops that differ from one year to the next. Hand-overs: share of crop-to-crop hand-overs that are not cereal after cereal. |
+| Income and assured sale | `sum of value_score x share of season x market factor`, reduced by water shortage | Market factor depends on the crop's market class and the farmer's market setting. Where a year needs more irrigation than the farmer's stated supply, the shortfall is shared in proportion and relative yield is `1 - Ky x (1 - ETa / ETc)` (FAO-33). No prices are used. |
+| Heat and dry-spell resilience | `0.5 x drought_tolerance + 0.5 x (1 - days above the crop's heat limit in its season / 30)` | Weighted by each crop's share of the year, averaged over the rotation. |
+| Easy to carry out | `0.45 x season fit + 0.30 x equipment available + 0.25 x (1 - establishment risk)`, minus 0.05 per extra sowing in a year | Season fit = share of the last 30 years whose frost-free season was at least as long as the crop needs (always 1 where frost does not limit crops). |
 
-Overall score = sum of (weight x score), with the farmer's slider values normalised to sum to 1. The code is `engine/scoring.py`; the tests are `tests/test_scoring.py`.
+Overall score = sum of (weight x score), with the farmer's slider values normalised to sum to 1. Reference code: `engine/scoring.py`; browser port: `frontend/src/engine/scoring.ts`; the two are compared by `tests/test_parity.py`.
 
 ## Crop summary
 
-| Crop | Group | Root depth (m) | Ky | Heat limit (°C) | Frost-free days needed | N | Organic matter | Drought tolerance | Value | Market | Equipment | Salt threshold (dS/m) |
+| Crop | Group | Root depth (m) | Ky | Heat limit (°C) | Frost-free days needed | N | Organic matter | Drought tolerance | Value | Market | Equipment | Salt threshold (dS/m) | Flooding water (mm) |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| Kuruvai rice (short duration, June-September) | flooded rice | 0.6 | 1.2 | 38 | - | 0.0 | 0.35 | 0.1 | 0.5 | assured | puddler, combine | 3.0 | 500 |
+| Thaladi rice (after kuruvai, October-February) | flooded rice | 0.6 | 1.2 | 38 | - | 0.0 | 0.35 | 0.3 | 0.5 | assured | puddler, combine | 3.0 | 400 |
+| Samba rice (long duration, August-January) | flooded rice | 0.6 | 1.2 | 38 | - | 0.0 | 0.4 | 0.3 | 0.65 | assured | puddler, combine | 3.0 | 500 |
+| Rice-fallow blackgram or greengram | legume | 0.7 | 1.0 | 40 | - | 0.5 | 0.25 | 0.6 | 0.15 | established | - | - | - |
+| Rice-fallow cotton (February-June) | broadleaf | 1.2 | 0.85 | 40 | - | 0.0 | 0.3 | 0.65 | 0.4 | established | drill | 7.7 | - |
+| Kuruvai-season maize or millet (instead of rice) | warm-season cereal | 1.2 | 1.1 | 38 | - | 0.0 | 0.45 | 0.6 | 0.28 | established | drill | 1.7 | - |
+| Green manure (daincha or sunn hemp, ploughed in) | legume | 1.0 | 1.0 | 42 | - | 0.7 | 0.8 | 0.6 | 0.0 | none | - | - | - |
+| Fallow (no crop) | none | 0.0 | 0.0 | 60 | - | 0.0 | 0.0 | 1.0 | 0.0 | none | - | - | - |
+
+## Crops in detail
+
+### Kuruvai rice (short duration, June-September)
+
+Family: Poaceae. Group: flooded rice. Annual.
+
+|  | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
-| Alfalfa hay (established stand) | legume | 2.5 | 1.1 | 32 | - | 1.0 | 0.75 | 0.6 | 1.0 | established | hay | 2.0 |
-| Alfalfa, establishment year | legume | 1.2 | 1.1 | 32 | - | 0.8 | 0.5 | 0.35 | 0.55 | established | hay, drill | 2.0 |
-| Winter cereal for hay (triticale, winter wheat or rye) | cool-season grass | 1.5 | 1.05 | 30 | - | 0.0 | 0.5 | 0.7 | 0.45 | established | hay, drill | 6.0 |
-| Teff grass hay (warm-season annual) | warm-season grass | 0.8 | 0.9 | 38 | 75 | 0.0 | 0.4 | 0.75 | 0.5 | niche | hay, drill | - |
-| Sorghum-sudangrass hay (warm-season annual) | warm-season grass | 1.5 | 0.9 | 38 | 100 | 0.0 | 0.55 | 0.85 | 0.45 | established | hay, drill | 6.8 |
-| Spring small-grain hay (oats or barley) | cool-season grass | 1.2 | 1.15 | 30 | - | 0.0 | 0.4 | 0.55 | 0.4 | established | hay, drill | 8.0 |
-| Spring small grain for grain (barley or spring wheat) | cool-season grass | 1.2 | 1.15 | 30 | - | 0.0 | 0.55 | 0.5 | 0.4 | established | drill, combine | 8.0 |
-| Safflower (deep-rooted oilseed) | broadleaf | 2.0 | 0.8 | 36 | 110 | 0.0 | 0.35 | 0.85 | 0.3 | uncertain | drill, combine | - |
-| Winter cover crop mix (cereal + winter pea or vetch) | cover mix | 1.0 | 1.0 | 30 | - | 0.5 | 0.75 | 0.6 | 0.05 | none (soil benefit; some grazing value) | drill | - |
-| Irrigated grass hay or pasture | cool-season grass | 1.0 | 1.0 | 30 | - | 0.0 | 0.85 | 0.5 | 0.55 | established | hay | - |
-| Idle or fallow (not irrigated) | none | 0.0 | 0.0 | 60 | - | 0.0 | 0.0 | 1.0 | 0.0 | none | - | - |
-| Irrigated crop, type uncertain | unknown | 1.0 | 1.1 | 32 | - | 0.0 | 0.45 | 0.5 | 0.5 | established | - | - |
+| Kc |  |  |  |  |  | 0.7 | 1.15 | 1.2 | 0.75 |  |  |  |
+| Cover |  |  |  |  |  | 0.35 | 0.8 | 0.95 | 0.75 | 0.25 |  |  |
+
+| Trait | Value | Source or rationale |
+| :-- | :-- | :-- |
+| crop coefficient (Kc) | see table | FAO56 Table 12: rice Kc 1.05 initial, 1.20 mid-season, 0.90-0.60 late; a 105-110 day crop transplanted in June (TNAU). |
+| soil cover | see table | Flooded canopy June-September; stubble, soon puddled again, in October. |
+| n score | 0.0 | PROJECT class value; see the crop's other notes. |
+| n credit kg ha | 0 to 0 | PROJECT class value; see the crop's other notes. |
+| om score | 0.35 | PROJECT class value; see the crop's other notes. |
+| root depth m | 0.6 | PROJECT class value; see the crop's other notes. |
+| heat limit c | 38 | PROJECT class value; see the crop's other notes. |
+| drought tolerance | 0.1 | Grown in the hot, dry south-west monsoon months almost entirely on canal water: if the Mettur opening is late or flows are low, this crop fails or is not planted (METTUR). |
+| ky | 1.2 | Grown in the hot, dry south-west monsoon months almost entirely on canal water: if the Mettur opening is late or flows are low, this crop fails or is not planted (METTUR). |
+| frost free days needed | 0 | PROJECT class value; see the crop's other notes. |
+| value score | 0.5 | With the thaladi crop this makes up the reference income (0.50 + 0.50 = 1.0). Bought at direct purchase centres at the support price. |
+| market | assured | With the thaladi crop this makes up the reference income (0.50 + 0.50 = 1.0). Bought at direct purchase centres at the support price. |
+| equipment | puddler, combine | PROJECT class value; see the crop's other notes. |
+| establishment risk | 0.3 | Depends on the reservoir opening on time (METTUR). |
+| plantings | 1 | PROJECT class value; see the crop's other notes. |
+| salt threshold ds m | 3.0 | FAO29 Table 4: paddy rice 3.0 dS/m. |
+| salt class | moderately sensitive | FAO29 Table 4: paddy rice 3.0 dS/m. |
+| extra water mm | 500 | Puddling and keeping the field flooded take roughly 400-600 mm beyond what the crop transpires; in heavy delta clay less seeps away than in lighter soils (PROJECT estimate from FAO56 chapter on paddy). |
+
+### Thaladi rice (after kuruvai, October-February)
+
+Family: Poaceae. Group: flooded rice. Annual.
+
+|  | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| Kc | 1.0 | 0.45 |  |  |  |  |  |  |  | 0.7 | 1.15 | 1.2 |
+| Cover | 0.9 | 0.5 |  |  |  |  |  |  |  | 0.35 | 0.8 | 0.95 |
+
+| Trait | Value | Source or rationale |
+| :-- | :-- | :-- |
+| crop coefficient (Kc) | see table | FAO56 Table 12 rice values on a 130-135 day crop transplanted in October (TNAU). |
+| n score | 0.0 | PROJECT class value; see the crop's other notes. |
+| n credit kg ha | 0 to 0 | PROJECT class value; see the crop's other notes. |
+| om score | 0.35 | PROJECT class value; see the crop's other notes. |
+| root depth m | 0.6 | PROJECT class value; see the crop's other notes. |
+| heat limit c | 38 | PROJECT class value; see the crop's other notes. |
+| drought tolerance | 0.3 | Grown through the north-east monsoon, so rain supplies much of its water; the risk is flooding in November-December rather than drought. |
+| ky | 1.2 | Grown through the north-east monsoon, so rain supplies much of its water; the risk is flooding in November-December rather than drought. |
+| frost free days needed | 0 | PROJECT class value; see the crop's other notes. |
+| value score | 0.5 | Half of the reference income; assured purchase. |
+| market | assured | Half of the reference income; assured purchase. |
+| equipment | puddler, combine | PROJECT class value; see the crop's other notes. |
+| establishment risk | 0.2 | Young seedlings can be submerged by cyclonic rain in November. |
+| plantings | 1 | PROJECT class value; see the crop's other notes. |
+| salt threshold ds m | 3.0 | PROJECT class value; see the crop's other notes. |
+| salt class | moderately sensitive | PROJECT class value; see the crop's other notes. |
+| extra water mm | 400 | As for kuruvai rice, a little less because the season is wet and cool (PROJECT). |
+
+### Samba rice (long duration, August-January)
+
+Family: Poaceae. Group: flooded rice. Annual.
+
+|  | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| Kc | 0.55 |  |  |  |  |  |  | 0.6 | 1.1 | 1.2 | 1.2 | 1.05 |
+| Cover | 0.6 |  |  |  |  |  |  | 0.3 | 0.75 | 0.95 | 0.95 | 0.95 |
+
+| Trait | Value | Source or rationale |
+| :-- | :-- | :-- |
+| crop coefficient (Kc) | see table | FAO56 Table 12 rice values on a 150-160 day crop planted in August-September (TNAU). |
+| n score | 0.0 | PROJECT class value; see the crop's other notes. |
+| n credit kg ha | 0 to 0 | PROJECT class value; see the crop's other notes. |
+| om score | 0.4 | A long crop leaves more root and stubble than a short one. |
+| root depth m | 0.6 | PROJECT class value; see the crop's other notes. |
+| heat limit c | 38 | PROJECT class value; see the crop's other notes. |
+| drought tolerance | 0.3 | Most of its season falls in the north-east monsoon; needs canal water mainly to establish. |
+| ky | 1.2 | Most of its season falls in the north-east monsoon; needs canal water mainly to establish. |
+| frost free days needed | 0 | PROJECT class value; see the crop's other notes. |
+| value score | 0.65 | One long crop yields more than either short crop but less than two (PROJECT class score). Assured purchase. |
+| market | assured | One long crop yields more than either short crop but less than two (PROJECT class score). Assured purchase. |
+| equipment | puddler, combine | PROJECT class value; see the crop's other notes. |
+| establishment risk | 0.15 | PROJECT class value; see the crop's other notes. |
+| plantings | 1 | PROJECT class value; see the crop's other notes. |
+| salt threshold ds m | 3.0 | PROJECT class value; see the crop's other notes. |
+| salt class | moderately sensitive | PROJECT class value; see the crop's other notes. |
+| extra water mm | 500 | PROJECT class value; see the crop's other notes. |
+
+### Rice-fallow blackgram or greengram
+
+Family: Fabaceae. Group: legume. Annual. Grown on leftover soil moisture: adds no irrigation need.
+
+|  | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| Kc |  | 0.5 | 1.0 | 0.5 |  |  |  |  |  |  |  |  |
+| Cover |  | 0.4 | 0.75 | 0.5 |  |  |  |  |  |  |  |  |
+
+| Trait | Value | Source or rationale |
+| :-- | :-- | :-- |
+| crop coefficient (Kc) | see table | FAO56 Table 12: green gram and similar pulses Kc 0.4 initial, 1.05 mid-season, 0.6-0.35 late. Broadcast into the standing rice a week before harvest and grown on the moisture left in the soil, with no irrigation (TRRI), so it adds nothing to irrigation need. |
+| n score | 0.5 | A legume: fixes nitrogen and leaves a modest amount for the next rice crop (SARE; TRRI). |
+| n credit kg ha | 15 to 40 | A legume: fixes nitrogen and leaves a modest amount for the next rice crop (SARE; TRRI). |
+| om score | 0.25 | PROJECT class value; see the crop's other notes. |
+| root depth m | 0.7 | PROJECT class value; see the crop's other notes. |
+| heat limit c | 40 | PROJECT class value; see the crop's other notes. |
+| drought tolerance | 0.6 | PROJECT class value; see the crop's other notes. |
+| ky | 1.0 | PROJECT class value; see the crop's other notes. |
+| frost free days needed | 0 | PROJECT class value; see the crop's other notes. |
+| value score | 0.15 | Low and variable yields (often 300-500 kg/ha) but almost no cost. |
+| market | established | Low and variable yields (often 300-500 kg/ha) but almost no cost. |
+| equipment |  | PROJECT class value; see the crop's other notes. |
+| establishment risk | 0.35 | Depends entirely on residual moisture and on January-February rain; yellow mosaic virus is common (TRRI). |
+| plantings | 1 | PROJECT class value; see the crop's other notes. |
+| salt threshold ds m | not documented | PROJECT class value; see the crop's other notes. |
+| salt class | sensitive | PROJECT class value; see the crop's other notes. |
+
+### Rice-fallow cotton (February-June)
+
+Family: Malvaceae. Group: broadleaf. Annual.
+
+|  | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| Kc |  | 0.35 | 0.7 | 1.1 | 1.15 | 0.6 |  |  |  |  |  |  |
+| Cover |  | 0.15 | 0.45 | 0.8 | 0.9 | 0.6 | 0.25 |  |  |  |  |  |
+
+| Trait | Value | Source or rationale |
+| :-- | :-- | :-- |
+| crop coefficient (Kc) | see table | FAO56 Table 12: cotton Kc 0.35 initial, 1.15-1.20 mid-season, 0.70-0.50 late, on the short rice-fallow season (TRRI). |
+| n score | 0.0 | PROJECT class value; see the crop's other notes. |
+| n credit kg ha | 0 to 0 | PROJECT class value; see the crop's other notes. |
+| om score | 0.3 | PROJECT class value; see the crop's other notes. |
+| root depth m | 1.2 | PROJECT class value; see the crop's other notes. |
+| heat limit c | 40 | PROJECT class value; see the crop's other notes. |
+| drought tolerance | 0.65 | Deep taproot (Ky 0.85, FAO33), but it grows through the hottest, driest months on borewell water. |
+| ky | 0.85 | Deep taproot (Ky 0.85, FAO33), but it grows through the hottest, driest months on borewell water. |
+| frost free days needed | 0 | PROJECT class value; see the crop's other notes. |
+| value score | 0.4 | A real cash crop in the delta, sold through regulated markets at prices that swing. |
+| market | established | A real cash crop in the delta, sold through regulated markets at prices that swing. |
+| equipment | drill | PROJECT class value; see the crop's other notes. |
+| establishment risk | 0.35 | Sown into wet rice stubble; summer showers and sucking pests decide the crop. |
+| plantings | 1 | PROJECT class value; see the crop's other notes. |
+| salt threshold ds m | 7.7 | FAO29 Table 4: cotton 7.7 dS/m. |
+| salt class | tolerant | FAO29 Table 4: cotton 7.7 dS/m. |
+
+### Kuruvai-season maize or millet (instead of rice)
+
+Family: Poaceae. Group: warm-season cereal. Annual.
+
+|  | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| Kc |  |  |  |  |  | 0.4 | 0.9 | 1.1 | 0.55 |  |  |  |
+| Cover |  |  |  |  |  | 0.2 | 0.65 | 0.9 | 0.7 | 0.3 |  |  |
+
+| Trait | Value | Source or rationale |
+| :-- | :-- | :-- |
+| crop coefficient (Kc) | see table | FAO56 Table 12: maize Kc mid-season 1.20, millet 1.00; an in-between value is used for a 100-110 day crop with no puddling or standing water. |
+| n score | 0.0 | PROJECT class value; see the crop's other notes. |
+| n credit kg ha | 0 to 0 | PROJECT class value; see the crop's other notes. |
+| om score | 0.45 | PROJECT class value; see the crop's other notes. |
+| root depth m | 1.2 | PROJECT class value; see the crop's other notes. |
+| heat limit c | 38 | PROJECT class value; see the crop's other notes. |
+| drought tolerance | 0.6 | Can be raised with a few irrigations from a borewell when canal water is late (TNAU alternative-crop advice for delayed-water years). |
+| ky | 1.1 | Can be raised with a few irrigations from a borewell when canal water is late (TNAU alternative-crop advice for delayed-water years). |
+| frost free days needed | 0 | PROJECT class value; see the crop's other notes. |
+| value score | 0.28 | Worth clearly less than a rice crop and has no assured buyer (PROJECT class score). |
+| market | established | Worth clearly less than a rice crop and has no assured buyer (PROJECT class score). |
+| equipment | drill | PROJECT class value; see the crop's other notes. |
+| establishment risk | 0.3 | Heavy delta clay drains slowly; these crops suffer if the field floods. |
+| plantings | 1 | PROJECT class value; see the crop's other notes. |
+| salt threshold ds m | 1.7 | FAO29 Table 4: maize 1.7 dS/m. |
+| salt class | moderately sensitive | FAO29 Table 4: maize 1.7 dS/m. |
+
+### Green manure (daincha or sunn hemp, ploughed in)
+
+Family: Fabaceae. Group: legume. Annual.
+
+|  | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| Kc |  |  |  |  | 0.5 | 0.9 | 0.6 |  |  |  |  |  |
+| Cover |  |  |  |  | 0.3 | 0.8 | 0.6 |  |  |  |  |  |
+
+| Trait | Value | Source or rationale |
+| :-- | :-- | :-- |
+| crop coefficient (Kc) | see table | Treated as a legume canopy (FAO56 Table 12 pulses) for the 45-50 days before it is ploughed in. |
+| n score | 0.7 | A 45-day stand ploughed in before transplanting supplies roughly 40-80 kg N/ha to the rice (TNAU; SARE). |
+| n credit kg ha | 40 to 80 | A 45-day stand ploughed in before transplanting supplies roughly 40-80 kg N/ha to the rice (TNAU; SARE). |
+| om score | 0.8 | All of its growth goes back into the soil. |
+| root depth m | 1.0 | PROJECT class value; see the crop's other notes. |
+| heat limit c | 42 | PROJECT class value; see the crop's other notes. |
+| drought tolerance | 0.6 | Needs summer showers or one or two irrigations to establish. |
+| ky | 1.0 | Needs summer showers or one or two irrigations to establish. |
+| frost free days needed | 0 | PROJECT class value; see the crop's other notes. |
+| value score | 0.0 | No sale crop: its return is the fertiliser saved and the soil built. |
+| market | none | No sale crop: its return is the fertiliser saved and the soil built. |
+| equipment |  | PROJECT class value; see the crop's other notes. |
+| establishment risk | 0.2 | PROJECT class value; see the crop's other notes. |
+| plantings | 1 | PROJECT class value; see the crop's other notes. |
+| salt threshold ds m | not documented | PROJECT class value; see the crop's other notes. |
+| salt class | tolerant (daincha) | PROJECT class value; see the crop's other notes. |
+
+### Fallow (no crop)
+
+Family: none. Group: none. Annual.
+
+|  | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| Kc |  |  |  |  |  |  |  |  |  |  |  |  |
+| Cover | 0.2 | 0.2 | 0.15 | 0.15 | 0.15 | 0.15 | 0.15 | 0.2 | 0.2 | 0.25 | 0.25 | 0.25 |
+
+| Trait | Value | Source or rationale |
+| :-- | :-- | :-- |
+| crop coefficient (Kc) | see table | No irrigation is applied. |
+| soil cover | see table | Stubble and weeds only. |
+| n score | 0.0 | PROJECT class value; see the crop's other notes. |
+| n credit kg ha | 0 to 0 | PROJECT class value; see the crop's other notes. |
+| om score | 0.0 | PROJECT class value; see the crop's other notes. |
+| root depth m | 0.0 | PROJECT class value; see the crop's other notes. |
+| heat limit c | 60 | PROJECT class value; see the crop's other notes. |
+| drought tolerance | 1.0 | PROJECT class value; see the crop's other notes. |
+| ky | 0.0 | PROJECT class value; see the crop's other notes. |
+| frost free days needed | 0 | PROJECT class value; see the crop's other notes. |
+| value score | 0.0 | PROJECT class value; see the crop's other notes. |
+| market | none | PROJECT class value; see the crop's other notes. |
+| equipment |  | PROJECT class value; see the crop's other notes. |
+| establishment risk | 0.0 | PROJECT class value; see the crop's other notes. |
+| plantings | 0 | PROJECT class value; see the crop's other notes. |
+| salt threshold ds m | not documented | PROJECT class value; see the crop's other notes. |
+| salt class | not applicable | PROJECT class value; see the crop's other notes. |
+
+## Rotation strategies
+
+### Kuruvai rice, thaladi rice and a rice-fallow pulse
+
+`kuruvai_thaladi_pulse` (can be chosen as the existing rotation) - Two rice crops a year (June-September and October-February), then blackgram on leftover moisture.
+
+| Year | What is in the field |
+| :-- | :-- |
+| 1 | Thaladi rice (Jan-Feb); Rice-fallow pulse (Feb-Apr); Kuruvai rice (Jun-Sep); Thaladi rice (Oct-Dec) |
+
+**May offer**
+
+- Two assured rice crops: the highest income when canal water arrives on time.
+- A pulse at almost no cost adds a little nitrogen and food.
+- The system the delta's canals, labour and markets are built around.
+
+**Risks needing local review**
+
+- The kuruvai crop depends on the Mettur reservoir opening on time and on borewells when it does not.
+- Rice after rice builds up stem borer, leaf folder and brown planthopper, and puddles the soil twice a year.
+- Thaladi seedlings can be drowned by cyclonic rain in November.
+
+**Information gaps**
+
+- How often canal water reached your village by mid-June in the last ten years.
+- Whether you have a borewell, and its water quality.
+
+**Check with a local expert**
+
+- Ask the Public Works Department section office or the water users' association about this year's release schedule.
+- Ask TNAU extension or the KVK which short-duration variety suits a late start.
+
+### One samba rice crop and a rice-fallow pulse
+
+`samba_pulse` (can be chosen as the existing rotation) - A single long-duration rice crop from August to January, then blackgram; the land rests in summer.
+
+| Year | What is in the field |
+| :-- | :-- |
+| 1 | Samba rice (Jan); Rice-fallow pulse (Feb-Apr); Samba rice (Aug-Dec) |
+
+**May offer**
+
+- Needs canal water only from August, so a late Mettur opening matters much less.
+- Most of the crop's water comes from the north-east monsoon.
+- Half the puddling and a long break from rice pests.
+
+**Risks needing local review**
+
+- One rice crop earns clearly less than two.
+- The field lies bare through the hot months from April to July.
+- The whole year rides on one crop and on the north-east monsoon.
+
+**Information gaps**
+
+- Whether summer showers are enough here to grow a green manure in the gap.
+
+**Check with a local expert**
+
+- Compare your own income from single and double cropping over wet and dry years.
+
+### Samba rice, rice-fallow pulse and a summer green manure
+
+`samba_pulse_greenmanure` - As above, with daincha or sunn hemp grown in May-July and ploughed in before the samba crop.
+
+| Year | What is in the field |
+| :-- | :-- |
+| 1 | Samba rice (Jan); Rice-fallow pulse (Feb-Apr); Green manure (May-Jul); Samba rice (Aug-Dec) |
+
+**May offer**
+
+- Two legumes a year: the most nitrogen and organic matter of the options here.
+- The soil is covered in early summer instead of lying bare.
+- Still needs canal water only from August.
+
+**Risks needing local review**
+
+- The green manure needs summer showers or a borewell irrigation to establish.
+- One rice crop earns less than two; the green manure itself earns nothing.
+- Ploughing in has to be done on time, about ten days before transplanting.
+
+**Information gaps**
+
+- Whether daincha or sunn hemp seed is available and subsidised this year.
+
+**Check with a local expert**
+
+- Ask the agriculture extension centre about green-manure seed supply.
+- Use a soil test to see how much fertiliser the green manure lets you cut.
+
+### Maize or millet in kuruvai, then thaladi rice and a pulse
+
+`millet_thaladi_pulse` - A dry-sown maize or millet replaces the kuruvai rice; thaladi rice and blackgram follow.
+
+| Year | What is in the field |
+| :-- | :-- |
+| 1 | Thaladi rice (Jan-Feb); Rice-fallow pulse (Feb-Apr); Maize or millet (Jun-Sep); Thaladi rice (Oct-Dec) |
+
+**May offer**
+
+- The June-September crop no longer needs standing water or an on-time canal.
+- Keeps one assured rice crop and the land in use all year.
+- A different plant group breaks the rice-after-rice pest cycle.
+
+**Risks needing local review**
+
+- Heavy delta clay drains slowly: maize and millets suffer if the field floods.
+- No assured buyer at a support price for the kuruvai-season crop.
+- Needs dry-land sowing equipment that paddy farms may not own.
+
+**Information gaps**
+
+- Whether your field drains well enough for an upland crop in July-August.
+- Local buyers and prices for maize or millets.
+
+**Check with a local expert**
+
+- Ask TNAU extension about the alternative-crop package offered in delayed-water years.
+- Try it on your best-drained field first.
+
+### Samba rice and rice-fallow cotton
+
+`samba_cotton` - A single samba rice crop, then cotton from February to June on borewell water.
+
+| Year | What is in the field |
+| :-- | :-- |
+| 1 | Samba rice (Jan); Rice-fallow cotton (Feb-Jun); Samba rice (Aug-Dec) |
+
+**May offer**
+
+- A cash crop in the months when the canals are dry.
+- A deep-rooted crop from a different family; tolerates salty water better than rice.
+- Only one puddling a year.
+
+**Risks needing local review**
+
+- Cotton needs irrigation through the hottest months, from a borewell: it shifts water use to groundwater.
+- Prices and yields swing; sucking pests are common.
+- No pulse in the rotation, so no legume nitrogen.
+
+**Information gaps**
+
+- Borewell depth, yield and salinity.
+- Last season's cotton price at the regulated market.
+
+**Check with a local expert**
+
+- Check borewell water quality before relying on it for cotton.
+- Ask the Tamil Nadu Rice Research Institute about rice-fallow cotton varieties and sowing dates.
+
+## Always check locally
+
+- This year's Mettur opening date and the canal turn schedule for your village.
+- A soil test (organic carbon, pH, salinity, nutrients), especially near the coast and at the tail end of canals.
+- Which crops are being bought at support prices this season, and where.
+- Varieties and sowing windows in the current TNAU Crop Production Guide.
+
+## References
+
+- **FAO56**: Allen, R.G., Pereira, L.S., Raes, D., Smith, M. (1998). Crop evapotranspiration. FAO Irrigation and Drainage Paper 56 (Tables 11, 12, 17, 22).
+- **FAO33**: Doorenbos, J., Kassam, A.H. (1979). Yield response to water. FAO Irrigation and Drainage Paper 33; updated in Steduto et al. (2012), FAO Paper 66.
+- **FAO29**: Ayers, R.S., Westcot, D.W. (1985). Water quality for agriculture. FAO Irrigation and Drainage Paper 29, Table 4 (crop salt tolerance).
+- **TNAU**: Tamil Nadu Agricultural University, Coimbatore. Crop Production Guide (Agriculture) and the TNAU Agritech Portal: seasons, varieties and durations for the Cauvery delta zone.
+- **TRRI**: Tamil Nadu Rice Research Institute, Aduthurai (TNAU): rice-fallow pulses and rice-fallow cotton recommendations for the delta.
+- **METTUR**: Water Resources Department, Government of Tamil Nadu: the Mettur (Stanley) reservoir is customarily opened for delta irrigation on 12 June; in years of low storage the opening is delayed and the kuruvai crop is cut back.
+- **SARE**: Clark, A. (ed.) (2007). Managing Cover Crops Profitably, 3rd edition. SARE Handbook 9 (legume nitrogen, green manures).
+- **PROJECT**: Class score assigned by this project from the general agronomy cited alongside it; not locally calibrated.
+
+---
+
+# Region: `diamond_valley_nv`
+
+Written for irrigated forage systems of the Great Basin (cold desert, about 1,800 m). Do not reuse the crop calendars elsewhere without local review.
+
+- Existing rotation: **read from the crop map and greenness record**
+- Water yardstick: **full-season alfalfa**
+- Hot day: above **32 °C**; heavy-rain day: **10 mm** or more
+
+## How each priority is scored
+
+| Priority | Formula | Details |
+| :-- | :-- | :-- |
+| Save water | `score = 2 x (1 - irrigation to deliver / full-season alfalfa irrigation to deliver)`, limited to 0-1 | Irrigation to deliver = sum over months of `Kc x reference ET x field factor` minus effective rain (USDA-SCS method), plus the water a paddy field takes to be puddled and kept flooded (`extra_water_mm`, zero for every other crop), averaged over the rotation. Reference ET is FAO-56 Penman-Monteith from NASA POWER daily weather, corrected month by month to a ground-station grid. The field factor is 1.0 unless the region has a crop map and satellite ET to anchor it. 0 = as thirsty as full-season alfalfa on that field, 1 = half the water or less. |
+| Keep soil covered | `score = sum over months of (risk weight x share of soil covered)` | Risk weights sum to 1 over the year. They combine windy days (daily mean wind >= 4.5 m/s at 2 m) scaled by the soil's wind-erodibility index, and heavy-rain days (>= 10 mm) scaled by field tilt (SRTM) and the soil K factor. Cover comes from each crop's monthly cover table; months nobody occupies keep half of the previous month's cover as residue, never below 0.1. |
+| Nitrogen from legumes | legume year = its `n_score`; first year after the stand 0.6; second 0.3; a legume cover crop adds up to 0.5 | Averaged over the rotation. |
+| Build organic matter | `sum of om_score x share of the crop's season - 0.08 per sowing` | Averaged over the rotation. Class scores only: organic matter cannot be seen from space. |
+| Break pest cycles | `0.45 x break + 0.35 x diversity + 0.20 x stand age` | Break: 0 if the stand follows itself, 0.6 for a one-year gap, 1.0 for two or more. Diversity: (number of plant groups - 1) / 3. Stand age: 1.0 up to 5 years, falling to 0 at 10. |
+| Forage and income | `sum of value_score x share of season x market factor`, reduced by water shortage | Market factor depends on the crop's market class and the farmer's market setting. Where a year needs more irrigation than the farmer's stated supply, the shortfall is shared in proportion and relative yield is `1 - Ky x (1 - ETa / ETc)` (FAO-33). No prices are used. |
+| Drought and heat resilience | `0.5 x drought_tolerance + 0.5 x (1 - days above the crop's heat limit in its season / 45)` | Weighted by each crop's share of the year, averaged over the rotation. |
+| Easy to carry out | `0.45 x season fit + 0.30 x equipment available + 0.25 x (1 - establishment risk)`, minus 0.05 per extra sowing in a year | Season fit = share of the last 30 years whose frost-free season was at least as long as the crop needs (always 1 where frost does not limit crops). |
+
+Overall score = sum of (weight x score), with the farmer's slider values normalised to sum to 1. Reference code: `engine/scoring.py`; browser port: `frontend/src/engine/scoring.ts`; the two are compared by `tests/test_parity.py`.
+
+## Crop summary
+
+| Crop | Group | Root depth (m) | Ky | Heat limit (°C) | Frost-free days needed | N | Organic matter | Drought tolerance | Value | Market | Equipment | Salt threshold (dS/m) | Flooding water (mm) |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| Alfalfa hay (established stand) | legume | 2.5 | 1.1 | 32 | - | 1.0 | 0.75 | 0.6 | 1.0 | established | hay | 2.0 | - |
+| Alfalfa, establishment year | legume | 1.2 | 1.1 | 32 | - | 0.8 | 0.5 | 0.35 | 0.55 | established | hay, drill | 2.0 | - |
+| Winter cereal for hay (triticale, winter wheat or rye) | cool-season grass | 1.5 | 1.05 | 30 | - | 0.0 | 0.5 | 0.7 | 0.45 | established | hay, drill | 6.0 | - |
+| Teff grass hay (warm-season annual) | warm-season grass | 0.8 | 0.9 | 38 | 75 | 0.0 | 0.4 | 0.75 | 0.5 | niche | hay, drill | - | - |
+| Sorghum-sudangrass hay (warm-season annual) | warm-season grass | 1.5 | 0.9 | 38 | 100 | 0.0 | 0.55 | 0.85 | 0.45 | established | hay, drill | 6.8 | - |
+| Spring small-grain hay (oats or barley) | cool-season grass | 1.2 | 1.15 | 30 | - | 0.0 | 0.4 | 0.55 | 0.4 | established | hay, drill | 8.0 | - |
+| Spring small grain for grain (barley or spring wheat) | cool-season grass | 1.2 | 1.15 | 30 | - | 0.0 | 0.55 | 0.5 | 0.4 | established | drill, combine | 8.0 | - |
+| Safflower (deep-rooted oilseed) | broadleaf | 2.0 | 0.8 | 36 | 110 | 0.0 | 0.35 | 0.85 | 0.3 | uncertain | drill, combine | - | - |
+| Winter cover crop mix (cereal + winter pea or vetch) | cover mix | 1.0 | 1.0 | 30 | - | 0.5 | 0.75 | 0.6 | 0.05 | none (soil benefit; some grazing value) | drill | - | - |
+| Irrigated grass hay or pasture | cool-season grass | 1.0 | 1.0 | 30 | - | 0.0 | 0.85 | 0.5 | 0.55 | established | hay | - | - |
+| Idle or fallow (not irrigated) | none | 0.0 | 0.0 | 60 | - | 0.0 | 0.0 | 1.0 | 0.0 | none | - | - | - |
+| Irrigated crop, type uncertain | unknown | 1.0 | 1.1 | 32 | - | 0.0 | 0.45 | 0.5 | 0.5 | established | - | - | - |
 
 ## Crops in detail
 
@@ -75,7 +520,7 @@ Family: Fabaceae. Group: legume. Perennial. USDA crop-map codes: 36.
 
 ### Alfalfa, establishment year
 
-Family: Fabaceae. Group: legume. Perennial. USDA crop-map codes: none.
+Family: Fabaceae. Group: legume. Perennial.
 
 |  | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
@@ -133,7 +578,7 @@ Family: Poaceae. Group: cool-season grass. Annual. USDA crop-map codes: 24, 27, 
 
 ### Teff grass hay (warm-season annual)
 
-Family: Poaceae. Group: warm-season grass. Annual. USDA crop-map codes: none.
+Family: Poaceae. Group: warm-season grass. Annual.
 
 |  | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
@@ -390,8 +835,6 @@ Family: unknown. Group: unknown. Annual. USDA crop-map codes: 1, 43, 44, 5, 6, 1
 
 ## Rotation strategies
 
-The existing rotation is always read from the field's own crop history (USDA crop map checked against Landsat greenness) and compared with these four.
-
 ### Alfalfa with a two-year double-crop forage break
 
 `cereal_teff_break` - Five years of alfalfa, then two years in which a winter cereal cut for hay in June is followed by teff in the summer, before alfalfa is sown again.
@@ -567,3 +1010,420 @@ The existing rotation is always read from the field's own crop history (USDA cro
 - **RUSLE**: Renard, K.G. et al. (1997). Predicting Soil Erosion by Water: RUSLE. USDA Agriculture Handbook 703 (cover-management concept: soil is protected in proportion to canopy and residue cover when erosive weather arrives).
 - **NEH623**: USDA NRCS National Engineering Handbook, Part 623, Chapter 2: Irrigation Water Requirements (USDA-SCS effective precipitation method).
 - **PROJECT**: Class score assigned by this project from the general agronomy cited alongside it; not locally calibrated.
+
+---
+
+# Region: `punjab_sangrur`
+
+Written for irrigated rice-wheat farms of central-southern Punjab (about 230 m, semi-arid, 550-650 mm of rain, three quarters of it in July-September). Crop calendars follow PAU's Package of Practices. Do not reuse elsewhere without local review.
+
+- Existing rotation: **chosen by the farmer (default suggested from the number of green seasons seen from space)**
+- Water yardstick: **rice-wheat**
+- Hot day: above **40 °C**; heavy-rain day: **50 mm** or more
+
+## How each priority is scored
+
+| Priority | Formula | Details |
+| :-- | :-- | :-- |
+| Save water | `score = 2 x (1 - irrigation to deliver / rice-wheat irrigation to deliver)`, limited to 0-1 | Irrigation to deliver = sum over months of `Kc x reference ET x field factor` minus effective rain (USDA-SCS method), plus the water a paddy field takes to be puddled and kept flooded (`extra_water_mm`, zero for every other crop), averaged over the rotation. Reference ET is FAO-56 Penman-Monteith from NASA POWER daily weather, corrected month by month to a ground-station grid. The field factor is 1.0 unless the region has a crop map and satellite ET to anchor it. 0 = as thirsty as rice-wheat on that field, 1 = half the water or less. |
+| Keep soil covered | `score = sum over months of (risk weight x share of soil covered)` | Risk weights sum to 1 over the year. They combine windy days (daily mean wind >= 4.5 m/s at 2 m) scaled by the soil's wind-erodibility index, and heavy-rain days (>= 50 mm) scaled by field tilt (SRTM) and the soil K factor. Cover comes from each crop's monthly cover table; months nobody occupies keep half of the previous month's cover as residue, never below 0.1. |
+| Nitrogen from legumes | `sum of n_score x share of the crop's season`, limited to 1 | Averaged over the rotation. |
+| Build organic matter | `sum of om_score x share of the crop's season - 0.08 per sowing` | Averaged over the rotation. Class scores only: organic matter cannot be seen from space. |
+| Break pest cycles | `0.35 x diversity + 0.30 x change + 0.35 x hand-overs` | Diversity: (number of plant groups - 1) / 3. Change: share of crops that differ from one year to the next. Hand-overs: share of crop-to-crop hand-overs that are not cereal after cereal. |
+| Income and assured sale | `sum of value_score x share of season x market factor`, reduced by water shortage | Market factor depends on the crop's market class and the farmer's market setting. Where a year needs more irrigation than the farmer's stated supply, the shortfall is shared in proportion and relative yield is `1 - Ky x (1 - ETa / ETc)` (FAO-33). No prices are used. |
+| Heat and dry-spell resilience | `0.5 x drought_tolerance + 0.5 x (1 - days above the crop's heat limit in its season / 30)` | Weighted by each crop's share of the year, averaged over the rotation. |
+| Easy to carry out | `0.45 x season fit + 0.30 x equipment available + 0.25 x (1 - establishment risk)`, minus 0.05 per extra sowing in a year | Season fit = share of the last 30 years whose frost-free season was at least as long as the crop needs (always 1 where frost does not limit crops). |
+
+Overall score = sum of (weight x score), with the farmer's slider values normalised to sum to 1. Reference code: `engine/scoring.py`; browser port: `frontend/src/engine/scoring.ts`; the two are compared by `tests/test_parity.py`.
+
+## Crop summary
+
+| Crop | Group | Root depth (m) | Ky | Heat limit (°C) | Frost-free days needed | N | Organic matter | Drought tolerance | Value | Market | Equipment | Salt threshold (dS/m) | Flooding water (mm) |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| Rice (paddy, transplanted) | flooded rice | 0.6 | 1.2 | 38 | - | 0.0 | 0.3 | 0.15 | 0.55 | assured | combine | 3.0 | 800 |
+| Wheat | cool-season cereal | 1.5 | 1.05 | 32 | - | 0.0 | 0.4 | 0.5 | 0.45 | assured | drill, combine | 6.0 | - |
+| Kharif maize | warm-season cereal | 1.3 | 1.25 | 36 | - | 0.0 | 0.5 | 0.45 | 0.38 | established | planter, combine | 1.7 | - |
+| Cotton (Bt hybrids) | broadleaf | 1.4 | 0.85 | 40 | - | 0.0 | 0.35 | 0.7 | 0.5 | established | planter | 7.7 | - |
+| Summer moong (green gram, 60-65 days) | legume | 0.8 | 1.0 | 42 | - | 0.6 | 0.3 | 0.5 | 0.15 | established | drill | 1.8 | - |
+| Gram (chickpea) | legume | 1.0 | 0.9 | 32 | - | 0.7 | 0.35 | 0.75 | 0.3 | established | drill, combine | - | - |
+| Fallow (no crop) | none | 0.0 | 0.0 | 60 | - | 0.0 | 0.0 | 1.0 | 0.0 | none | - | - | - |
+
+## Crops in detail
+
+### Rice (paddy, transplanted)
+
+Family: Poaceae. Group: flooded rice. Annual.
+
+|  | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| Kc |  |  |  |  |  | 0.55 | 1.1 | 1.2 | 1.15 | 0.5 |  |  |
+| Cover |  |  |  |  |  | 0.3 | 0.7 | 0.95 | 0.95 | 0.6 | 0.15 |  |
+
+| Trait | Value | Source or rationale |
+| :-- | :-- | :-- |
+| crop coefficient (Kc) | see table | FAO56 Table 12: rice Kc 1.05 initial, 1.20 mid-season, 0.90-0.60 late. June is counted at about half because transplanting starts from mid-June (ACT2009). |
+| soil cover | see table | Standing water and canopy from July to September; after combine harvest the loose straw is usually burnt or removed, leaving the soil nearly bare in late October-November (PROJECT). |
+| n score | 0.0 | PROJECT class value; see the crop's other notes. |
+| n credit kg ha | 0 to 0 | PROJECT class value; see the crop's other notes. |
+| om score | 0.3 | Puddling breaks soil structure every year and most straw is burnt or removed (CA; PROJECT). |
+| root depth m | 0.6 | PROJECT class value; see the crop's other notes. |
+| heat limit c | 38 | PROJECT class value; see the crop's other notes. |
+| drought tolerance | 0.15 | The most water-sensitive cereal: yield falls faster than water (Ky about 1.2, FAO33). |
+| ky | 1.2 | The most water-sensitive cereal: yield falls faster than water (Ky about 1.2, FAO33). |
+| frost free days needed | 0 | PROJECT class value; see the crop's other notes. |
+| value score | 0.55 | With wheat this makes up the reference income (rice 0.55 + wheat 0.45 = 1.0). Procured at the minimum support price: an assured sale. |
+| market | assured | With wheat this makes up the reference income (rice 0.55 + wheat 0.45 = 1.0). Procured at the minimum support price: an assured sale. |
+| equipment | combine | PROJECT class value; see the crop's other notes. |
+| establishment risk | 0.1 | PROJECT class value; see the crop's other notes. |
+| plantings | 1 | PROJECT class value; see the crop's other notes. |
+| salt threshold ds m | 3.0 | FAO29 Table 4: paddy rice 3.0 dS/m. |
+| salt class | moderately sensitive | FAO29 Table 4: paddy rice 3.0 dS/m. |
+| extra water mm | 800 | On top of what the crop transpires, puddling and keeping the field flooded take roughly 700-1,000 mm more pumping. Most of that seeps back to the aquifer, so it costs pumping and electricity rather than groundwater (HUMPHREYS). It is shown in the app but not counted in the water score. |
+
+### Wheat
+
+Family: Poaceae. Group: cool-season cereal. Annual.
+
+|  | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| Kc | 1.05 | 1.15 | 1.05 | 0.35 |  |  |  |  |  |  | 0.4 | 0.7 |
+| Cover | 0.85 | 0.95 | 0.95 | 0.7 | 0.35 |  |  |  |  |  | 0.2 | 0.55 |
+
+| Trait | Value | Source or rationale |
+| :-- | :-- | :-- |
+| crop coefficient (Kc) | see table | FAO56 Table 12: winter wheat Kc 0.4-0.7 initial, 1.15 mid-season, 0.25-0.4 at harvest; sown in November, harvested mid-April (PAU). |
+| soil cover | see table | Bare seedbed in November unless sown into rice residue; full canopy January-March; stubble after April. |
+| n score | 0.0 | PROJECT class value; see the crop's other notes. |
+| n credit kg ha | 0 to 0 | PROJECT class value; see the crop's other notes. |
+| om score | 0.4 | Fibrous roots; the straw is taken off as fodder. |
+| root depth m | 1.5 | PROJECT class value; see the crop's other notes. |
+| heat limit c | 32 | Heat above about 32 °C during grain filling in March shrivels the grain ('terminal heat'); this is the crop's main climate risk here (PAU). |
+| drought tolerance | 0.5 | PROJECT class value; see the crop's other notes. |
+| ky | 1.05 | PROJECT class value; see the crop's other notes. |
+| frost free days needed | 0 | PROJECT class value; see the crop's other notes. |
+| value score | 0.45 | Reference income together with rice; procured at the minimum support price. |
+| market | assured | Reference income together with rice; procured at the minimum support price. |
+| equipment | drill, combine | PROJECT class value; see the crop's other notes. |
+| establishment risk | 0.1 | PROJECT class value; see the crop's other notes. |
+| plantings | 1 | PROJECT class value; see the crop's other notes. |
+| salt threshold ds m | 6.0 | FAO29 Table 4: wheat 6.0 dS/m. |
+| salt class | moderately tolerant | FAO29 Table 4: wheat 6.0 dS/m. |
+
+### Kharif maize
+
+Family: Poaceae. Group: warm-season cereal. Annual.
+
+|  | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| Kc |  |  |  |  |  | 0.35 | 0.8 | 1.2 | 1.1 | 0.45 |  |  |
+| Cover |  |  |  |  |  | 0.15 | 0.6 | 0.9 | 0.9 | 0.6 | 0.35 |  |
+
+| Trait | Value | Source or rationale |
+| :-- | :-- | :-- |
+| crop coefficient (Kc) | see table | FAO56 Table 12: maize (grain) Kc 0.3 initial, 1.20 mid-season, 0.35-0.6 late; sown mid-June to early July (PAU). No puddling and no standing water. |
+| n score | 0.0 | PROJECT class value; see the crop's other notes. |
+| n credit kg ha | 0 to 0 | PROJECT class value; see the crop's other notes. |
+| om score | 0.5 | More stalk and root left than rice, with no puddling (CA). |
+| root depth m | 1.3 | PROJECT class value; see the crop's other notes. |
+| heat limit c | 36 | PROJECT class value; see the crop's other notes. |
+| drought tolerance | 0.45 | Very sensitive to dry spells at tasselling and silking (Ky 1.25, FAO33); it also suffers from waterlogging after heavy monsoon rain. |
+| ky | 1.25 | Very sensitive to dry spells at tasselling and silking (Ky 1.25, FAO33); it also suffers from waterlogging after heavy monsoon rain. |
+| frost free days needed | 0 | PROJECT class value; see the crop's other notes. |
+| value score | 0.38 | A support price is announced but little is bought at it; prices in the mandi swing, and grain has to be dried (PROJECT class score; no prices in this tool). |
+| market | established | A support price is announced but little is bought at it; prices in the mandi swing, and grain has to be dried (PROJECT class score; no prices in this tool). |
+| equipment | planter, combine | PROJECT class value; see the crop's other notes. |
+| establishment risk | 0.25 | Stands are easily lost to waterlogging or stray cattle; fall armyworm has been a pest since 2018 (PAU). |
+| plantings | 1 | PROJECT class value; see the crop's other notes. |
+| salt threshold ds m | 1.7 | FAO29 Table 4: maize 1.7 dS/m. |
+| salt class | moderately sensitive | FAO29 Table 4: maize 1.7 dS/m. |
+
+### Cotton (Bt hybrids)
+
+Family: Malvaceae. Group: broadleaf. Annual.
+
+|  | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| Kc |  |  |  |  | 0.35 | 0.6 | 1.0 | 1.15 | 1.15 | 0.8 | 0.45 |  |
+| Cover |  |  |  |  | 0.1 | 0.35 | 0.7 | 0.9 | 0.9 | 0.8 | 0.5 |  |
+
+| Trait | Value | Source or rationale |
+| :-- | :-- | :-- |
+| crop coefficient (Kc) | see table | FAO56 Table 12: cotton Kc 0.35 initial, 1.15-1.20 mid-season, 0.70-0.50 late; sown late April-May, picked October-November (PAU). |
+| n score | 0.0 | PROJECT class value; see the crop's other notes. |
+| n credit kg ha | 0 to 0 | PROJECT class value; see the crop's other notes. |
+| om score | 0.35 | PROJECT class value; see the crop's other notes. |
+| root depth m | 1.4 | PROJECT class value; see the crop's other notes. |
+| heat limit c | 40 | PROJECT class value; see the crop's other notes. |
+| drought tolerance | 0.7 | Deep taproot; yield falls less than water (Ky 0.85, FAO33). |
+| ky | 0.85 | Deep taproot; yield falls less than water (Ky 0.85, FAO33). |
+| frost free days needed | 0 | PROJECT class value; see the crop's other notes. |
+| value score | 0.5 | Can match paddy in a good year, but yields and prices swing widely; bought by the Cotton Corporation of India and private traders. |
+| market | established | Can match paddy in a good year, but yields and prices swing widely; bought by the Cotton Corporation of India and private traders. |
+| equipment | planter | PROJECT class value; see the crop's other notes. |
+| establishment risk | 0.4 | Whitefly and pink bollworm have caused repeated crop failures in the cotton belt; this is the crop's defining risk (PAU). |
+| plantings | 1 | PROJECT class value; see the crop's other notes. |
+| salt threshold ds m | 7.7 | FAO29 Table 4: cotton 7.7 dS/m. |
+| salt class | tolerant | FAO29 Table 4: cotton 7.7 dS/m. |
+
+### Summer moong (green gram, 60-65 days)
+
+Family: Fabaceae. Group: legume. Annual.
+
+|  | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| Kc |  |  |  | 0.3 | 0.95 | 0.5 |  |  |  |  |  |  |
+| Cover |  |  |  | 0.2 | 0.8 | 0.6 |  |  |  |  |  |  |
+
+| Trait | Value | Source or rationale |
+| :-- | :-- | :-- |
+| crop coefficient (Kc) | see table | FAO56 Table 12: green gram Kc 0.4 initial, 1.05 mid-season, 0.60-0.35 late. Short-duration varieties fit between wheat harvest and paddy transplanting (PAU). April and June are part months. |
+| n score | 0.6 | A legume that fixes nitrogen; ploughing in the residue after picking the pods returns roughly 25-50 kg N/ha (SARE; CA). |
+| n credit kg ha | 25 to 50 | A legume that fixes nitrogen; ploughing in the residue after picking the pods returns roughly 25-50 kg N/ha (SARE; CA). |
+| om score | 0.3 | PROJECT class value; see the crop's other notes. |
+| root depth m | 0.8 | PROJECT class value; see the crop's other notes. |
+| heat limit c | 42 | PROJECT class value; see the crop's other notes. |
+| drought tolerance | 0.5 | Grown in May-June, when the weather's water demand is at its yearly peak. |
+| ky | 1.0 | Grown in May-June, when the weather's water demand is at its yearly peak. |
+| frost free days needed | 0 | PROJECT class value; see the crop's other notes. |
+| value score | 0.15 | A small extra crop; a support price exists but buying at it has been patchy. |
+| market | established | A small extra crop; a support price exists but buying at it has been patchy. |
+| equipment | drill | PROJECT class value; see the crop's other notes. |
+| establishment risk | 0.3 | Pre-monsoon rain at maturity spoils the grain, and the crop needs 3-4 irrigations in the hottest weeks of the year (PAU). |
+| plantings | 1 | PROJECT class value; see the crop's other notes. |
+| salt threshold ds m | 1.8 | PROJECT class value; see the crop's other notes. |
+| salt class | sensitive | PROJECT class value; see the crop's other notes. |
+
+### Gram (chickpea)
+
+Family: Fabaceae. Group: legume. Annual.
+
+|  | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| Kc | 1.0 | 0.8 | 0.35 |  |  |  |  |  |  | 0.4 | 0.6 | 0.9 |
+| Cover | 0.9 | 0.9 | 0.6 | 0.3 |  |  |  |  |  | 0.15 | 0.45 | 0.75 |
+
+| Trait | Value | Source or rationale |
+| :-- | :-- | :-- |
+| crop coefficient (Kc) | see table | FAO56 Table 12: chickpea Kc 0.4 initial, 1.00 mid-season, 0.35 late; sown late October, harvested late March (PAU). |
+| n score | 0.7 | A legume: fixes its own nitrogen and leaves some for the next crop (SARE). |
+| n credit kg ha | 20 to 40 | A legume: fixes its own nitrogen and leaves some for the next crop (SARE). |
+| om score | 0.35 | PROJECT class value; see the crop's other notes. |
+| root depth m | 1.0 | PROJECT class value; see the crop's other notes. |
+| heat limit c | 32 | PROJECT class value; see the crop's other notes. |
+| drought tolerance | 0.75 | Needs only one or two irrigations; too much water or winter rain brings wilt and blight (PAU). |
+| ky | 0.9 | Needs only one or two irrigations; too much water or winter rain brings wilt and blight (PAU). |
+| frost free days needed | 0 | PROJECT class value; see the crop's other notes. |
+| value score | 0.3 | Lower and less certain yield than wheat; frost in January and pod borer are the main losses (PROJECT class score). |
+| market | established | Lower and less certain yield than wheat; frost in January and pod borer are the main losses (PROJECT class score). |
+| equipment | drill, combine | PROJECT class value; see the crop's other notes. |
+| establishment risk | 0.3 | PROJECT class value; see the crop's other notes. |
+| plantings | 1 | PROJECT class value; see the crop's other notes. |
+| salt threshold ds m | not documented | PROJECT class value; see the crop's other notes. |
+| salt class | sensitive | PROJECT class value; see the crop's other notes. |
+
+### Fallow (no crop)
+
+Family: none. Group: none. Annual.
+
+|  | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| Kc |  |  |  |  |  |  |  |  |  |  |  |  |
+| Cover | 0.15 | 0.15 | 0.15 | 0.15 | 0.15 | 0.15 | 0.25 | 0.25 | 0.25 | 0.2 | 0.15 | 0.15 |
+
+| Trait | Value | Source or rationale |
+| :-- | :-- | :-- |
+| crop coefficient (Kc) | see table | No irrigation is applied. |
+| soil cover | see table | Stubble and weeds only. |
+| n score | 0.0 | PROJECT class value; see the crop's other notes. |
+| n credit kg ha | 0 to 0 | PROJECT class value; see the crop's other notes. |
+| om score | 0.0 | PROJECT class value; see the crop's other notes. |
+| root depth m | 0.0 | PROJECT class value; see the crop's other notes. |
+| heat limit c | 60 | PROJECT class value; see the crop's other notes. |
+| drought tolerance | 1.0 | PROJECT class value; see the crop's other notes. |
+| ky | 0.0 | PROJECT class value; see the crop's other notes. |
+| frost free days needed | 0 | PROJECT class value; see the crop's other notes. |
+| value score | 0.0 | PROJECT class value; see the crop's other notes. |
+| market | none | PROJECT class value; see the crop's other notes. |
+| equipment |  | PROJECT class value; see the crop's other notes. |
+| establishment risk | 0.0 | PROJECT class value; see the crop's other notes. |
+| plantings | 0 | PROJECT class value; see the crop's other notes. |
+| salt threshold ds m | not documented | PROJECT class value; see the crop's other notes. |
+| salt class | not applicable | PROJECT class value; see the crop's other notes. |
+
+## Rotation strategies
+
+### Rice-wheat every year
+
+`rice_wheat` (can be chosen as the existing rotation) - Transplanted paddy from mid-June, then wheat from November. What most farms here grow.
+
+| Year | What is in the field |
+| :-- | :-- |
+| 1 | Wheat (Jan-Apr); Rice (Jun-Oct); Wheat (Nov-Dec) |
+
+**May offer**
+
+- Both crops are bought at the minimum support price: the surest income available.
+- Machinery, labour, inputs and know-how are all in place.
+- High and stable yields under assured irrigation.
+
+**Risks needing local review**
+
+- The highest water use of the options here, in a district whose groundwater is classed over-exploited.
+- Three weeks between paddy harvest and wheat sowing push farmers to burn the straw.
+- Two cereals every year: weeds such as Phalaris, and soil that hardens under puddling.
+- Wheat is exposed to March heat; late sowing after paddy makes it worse.
+
+**Information gaps**
+
+- Your tubewell depth, discharge and how fast the water level is falling.
+- Whether you burn, remove or keep the paddy straw.
+
+**Check with a local expert**
+
+- Ask the block agriculture office for the groundwater category of your block.
+- Ask PAU or the KVK about short-duration paddy varieties and the Happy Seeder for sowing wheat into straw.
+
+### Rice-wheat with summer moong
+
+`rice_wheat_moong` (can be chosen as the existing rotation) - The same rice and wheat, with a 60-day moong crop in April-June between them.
+
+| Year | What is in the field |
+| :-- | :-- |
+| 1 | Wheat (Jan-Apr); Summer moong (Apr-Jun); Rice (Jun-Oct); Wheat (Nov-Dec) |
+
+**May offer**
+
+- Adds a legume: some nitrogen for the paddy and a third plant family.
+- Covers the soil in the hot, windy weeks of May.
+- A little extra income without giving up rice or wheat.
+
+**Risks needing local review**
+
+- Moong needs 3-4 irrigations in the hottest part of the year: this option uses MORE water, not less.
+- Rain at maturity in June can ruin the grain.
+- Leaves very little time before paddy transplanting.
+
+**Information gaps**
+
+- Whether moong was bought at the support price in your mandi last season.
+- Whitefly and yellow mosaic pressure in your village.
+
+**Check with a local expert**
+
+- Check with the KVK which short-duration variety and sowing date fit after your wheat harvest.
+- Ask whether procurement of moong is planned this year.
+
+### Maize instead of paddy, with wheat and summer moong
+
+`maize_wheat_moong` (can be chosen as the existing rotation) - Kharif maize replaces paddy; wheat follows; summer moong fills April-June.
+
+| Year | What is in the field |
+| :-- | :-- |
+| 1 | Wheat (Jan-Apr); Summer moong (Apr-Jun); Maize (Jun-Oct); Wheat (Nov-Dec) |
+
+**May offer**
+
+- Maize transpires less than paddy and needs no puddling or standing water: far less pumping.
+- No paddy straw to burn; wheat can be sown on time.
+- Soil structure recovers without puddling, and a legume is added.
+
+**Risks needing local review**
+
+- Maize has no assured buyer at the support price: income depends on the mandi price.
+- Maize fails if the field floods after heavy monsoon rain, or dries at tasselling.
+- Needs a planter, and the grain must be dried before sale.
+
+**Information gaps**
+
+- Maize price and buyers near you (starch mills, poultry feed, ethanol plants).
+- Whether your fields drain well enough for maize in a wet July.
+
+**Check with a local expert**
+
+- Ask about the state's crop-diversification incentive for moving out of paddy.
+- Talk to a neighbour who grows kharif maize about drainage and fall armyworm.
+- Line up a buyer or a dryer before sowing.
+
+### Cotton-wheat
+
+`cotton_wheat` (can be chosen as the existing rotation) - Bt cotton from May to November, then late-sown wheat. The rotation of Punjab's south-west.
+
+| Year | What is in the field |
+| :-- | :-- |
+| 1 | Wheat (Jan-Apr); Cotton (May-Nov); Wheat (Nov-Dec) |
+
+**May offer**
+
+- A deep-rooted crop from a different family; no puddling.
+- Tolerates salty water and soil better than paddy or maize.
+- Can earn as much as paddy in a good year.
+
+**Risks needing local review**
+
+- Whitefly and pink bollworm have wiped out crops in recent years: the largest risk of any option here.
+- Wheat is sown late after the last picking, which exposes it more to March heat.
+- Picking needs a lot of labour.
+
+**Information gaps**
+
+- Pest pressure in your block over the last three seasons.
+- Whether heavier soils here suit cotton; it prefers lighter, well-drained land.
+
+**Check with a local expert**
+
+- Ask the agriculture department for this year's recommended Bt hybrids and the pest advisory.
+- Check canal or tubewell water quality if salinity is suspected.
+
+### Paddy every other year
+
+`alternate_paddy` - Rice-wheat one year; maize, gram and summer moong the next.
+
+| Year | What is in the field |
+| :-- | :-- |
+| 1 | Gram (Jan-Mar); Summer moong (Apr-Jun); Rice (Jun-Oct); Wheat (Nov-Dec) |
+| 2 | Wheat (Jan-Apr); Maize (Jun-Oct); Gram (Oct-Dec) |
+
+**May offer**
+
+- Halves the paddy area while keeping an assured crop every year.
+- Two legumes in two years and four plant groups.
+- The field is puddled only every second year.
+
+**Risks needing local review**
+
+- Gram and maize have less certain yields and prices than wheat and paddy.
+- More crops to learn and more sowing dates to hit.
+- Gram dislikes heavy, wet soil and frost.
+
+**Information gaps**
+
+- Local prices for maize and gram.
+- Whether your soil is light enough for gram.
+
+**Check with a local expert**
+
+- Try it on a part of the farm first.
+- Ask PAU extension which gram and maize varieties suit your block.
+
+## Always check locally
+
+- Groundwater category of your block and the depth of water in your own tubewell.
+- A soil health card test (organic carbon, pH, salinity, nutrients).
+- This season's minimum support prices and which crops are actually being procured.
+- Sowing windows and varieties in the current PAU Package of Practices.
+
+## References
+
+- **FAO56**: Allen, R.G., Pereira, L.S., Raes, D., Smith, M. (1998). Crop evapotranspiration. FAO Irrigation and Drainage Paper 56 (Tables 11, 12, 17, 22).
+- **FAO33**: Doorenbos, J., Kassam, A.H. (1979). Yield response to water. FAO Irrigation and Drainage Paper 33; updated in Steduto et al. (2012), FAO Paper 66.
+- **FAO29**: Ayers, R.S., Westcot, D.W. (1985). Water quality for agriculture. FAO Irrigation and Drainage Paper 29, Table 4 (crop salt tolerance).
+- **PAU**: Punjab Agricultural University, Ludhiana. Package of Practices for Crops of Punjab: Kharif and Rabi (published every year). Sowing windows, durations and irrigation numbers.
+- **HUMPHREYS**: Humphreys, E. et al. (2010). Halting the groundwater decline in north-west India: which crop technologies will be winners? Advances in Agronomy 109: 155-217. (Only lower ET is a real saving; water that percolates from paddy largely returns to the aquifer.)
+- **ACT2009**: The Punjab Preservation of Subsoil Water Act, 2009: paddy nursery and transplanting dates are fixed by notification each year (transplanting from mid-June), to move the crop away from the hottest, driest weeks.
+- **RODELL**: Rodell, M., Velicogna, I., Famiglietti, J.S. (2009). Satellite-based estimates of groundwater depletion in India. Nature 460: 999-1002. (GRACE: about 4 cm of water a year lost across Rajasthan, Punjab and Haryana, 2002-2008.)
+- **CGWB**: Central Ground Water Board, Dynamic Ground Water Resources of India (periodic assessments): most blocks of Sangrur and Barnala districts are classed over-exploited.
+- **SARE**: Clark, A. (ed.) (2007). Managing Cover Crops Profitably, 3rd edition. SARE Handbook 9 (legume nitrogen).
+- **CA**: Jat, M.L. et al. and CIMMYT-ICAR work on conservation agriculture in the rice-wheat and maize-wheat systems of north-west India (zero tillage, residue retention with the Happy Seeder, summer mungbean).
+- **PROJECT**: Class score assigned by this project from the general agronomy cited alongside it; not locally calibrated.
+
+---

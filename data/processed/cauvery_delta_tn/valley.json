@@ -202,6 +202,19 @@
    "notes": ""
   },
   {
+   "source": "smap",
+   "title": "SMAP enhanced L3 soil moisture (SPL3SMP_E, 9 km)",
+   "tier": "MUST",
+   "status": "ok",
+   "resolution": "9 km EASE-Grid 2.0 (interpolated from ~33 km radiometer footprints); a retrieval every 2-3 days",
+   "date_range": "2015-04-01 to 2025-12-31",
+   "credit": "O'Neill, P. E. et al. SMAP Enhanced L3 Radiometer Global and Polar Grid Daily 9 km EASE-Grid Soil Moisture. NASA National Snow and Ice Data Center DAAC, Boulder, Colorado.",
+   "message": "2,806 retrieval days, 774 cell-months; 0 daily files failed; sanity passed",
+   "action_needed": "",
+   "is_demo_data": false,
+   "notes": "Top ~5 cm of soil only, and each 9 km cell is mostly desert shrubland with the irrigated pivots mixed in: it shows whether the valley is wetter or drier than usual, not the moisture under one pivot. Anomaly z = (month mean - that calendar month's 2015-2025 mean) / standard deviation; months with under 5 retrieval days are left blank."
+  },
+  {
    "source": "soilgrids",
    "title": "SoilGrids 2.0 soil properties (ISRIC, 250 m)",
    "tier": "MUST",

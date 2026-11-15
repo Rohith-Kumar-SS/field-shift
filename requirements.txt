@@ -18,15 +18,11 @@ earthaccess
 pystac-client
 planetary-computer
 earthengine-api
+imdlib
 pyyaml
 pillow
 tqdm
 
-# --- backend ---
-fastapi
-uvicorn[standard]
-pydantic
-
-# --- tests ---
+# --- tests, deploy script ---
 pytest
 httpx

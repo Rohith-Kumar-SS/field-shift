@@ -1,20 +1,15 @@
-import { useEffect, useState } from "react";
-import { MONTHS, api, type Dict, type Meta } from "../api";
+import { useState } from "react";
+import { MONTHS, type Glossary, type RegionData } from "../data";
 import { DemoBadge, Modal } from "./ui";
 
-const STATUS: Record<string, string> = {
-  ok: "Loaded",
-  partial: "Partly loaded",
-  failed: "Not loaded: action needed",
-  skipped: "Skipped",
-};
+const STATUS: Record<string, string> = { ok: "Loaded", partial: "Partly loaded", failed: "Not loaded: action needed", skipped: "Skipped" };
 
-export function GlossaryModal({ meta, onClose }: { meta: Meta; onClose: () => void }) {
+export function GlossaryModal({ glossary, onClose }: { glossary: Glossary; onClose: () => void }) {
   return (
     <Modal title="Plain-language guide" onClose={onClose}>
-      <p className="modal-lede">{meta.glossary.disclaimer}</p>
+      <p className="modal-lede">{glossary.disclaimer}</p>
       <dl className="glossary">
-        {meta.glossary.terms.map((t) => (
+        {glossary.terms.map((t) => (
           <div key={t.id}>
             <dt>
               {t.plain} <span>{t.term}</span>
@@ -25,7 +20,7 @@ export function GlossaryModal({ meta, onClose }: { meta: Meta; onClose: () => vo
       </dl>
       <h3>What this tool cannot see</h3>
       <ul className="plain">
-        {meta.glossary.limits.map((l) => (
+        {glossary.limits.map((l) => (
           <li key={l}>{l}</li>
         ))}
       </ul>
@@ -33,14 +28,14 @@ export function GlossaryModal({ meta, onClose }: { meta: Meta; onClose: () => vo
   );
 }
 
-export function SourcesModal({ meta, onClose }: { meta: Meta; onClose: () => void }) {
+export function SourcesModal({ region, onClose }: { region: RegionData; onClose: () => void }) {
   const order = ["MUST", "STRONG", "OPTIONAL"];
-  const list = [...meta.sources].filter((s) => !["overlays", "datalog"].includes(s.source)).sort((a, b) => order.indexOf(a.tier) - order.indexOf(b.tier));
+  const list = [...region.sources].sort((a, b) => order.indexOf(a.tier) - order.indexOf(b.tier));
   return (
-    <Modal title="About the data" onClose={onClose} wide>
+    <Modal title={`About the data · ${region.region.short}`} onClose={onClose} wide>
       <p className="modal-lede">
         Every number in this tool was downloaded from the source named below and reduced to field-by-month values. Nothing is simulated.{" "}
-        {meta.any_demo_data ? (
+        {region.any_demo_data ? (
           <>
             Sample values are marked <DemoBadge />.
           </>
@@ -76,52 +71,49 @@ export function SourcesModal({ meta, onClose }: { meta: Meta; onClose: () => voi
   );
 }
 
-export function MethodModal({ meta, onClose }: { meta: Meta; onClose: () => void }) {
-  const [kb, setKb] = useState<Dict | null>(null);
-  const [crop, setCrop] = useState<string>("alfalfa");
-  useEffect(() => {
-    api.knowledge().then(setKb).catch(() => setKb({}));
-  }, []);
+export function MethodModal({ region, onClose }: { region: RegionData | null; onClose: () => void }) {
+  const kb = region?.kb;
+  const [crop, setCrop] = useState<string>(kb ? Object.keys(kb.crops)[0] : "");
   const c = kb?.crops?.[crop];
   return (
     <Modal title="How the scores work" onClose={onClose} wide>
       <p className="modal-lede">
-        Each rotation gets a score from 0 to 100 on each of your priorities. Your sliders decide how much each priority counts, and the overall score is the weighted sum. There is no hidden model: the rules are below, and every score
-        on a card opens to show its inputs.
+        Each rotation gets a score from 0 to 100 on each of your priorities. Your sliders decide how much each priority counts, and the overall score is the weighted sum. There is no hidden model: the rules are below, and every score on a
+        card opens to show its inputs. The scoring runs in your browser; the same rules, written in Python, are tested against it.
       </p>
-      <div className="table-scroll">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Priority</th>
-              <th>What it rewards</th>
-              <th>Built from</th>
-            </tr>
-          </thead>
-          <tbody>
-            {meta.criteria.map((cr) => (
-              <tr key={cr.id}>
-                <td>
-                  <strong>{cr.label}</strong>
-                </td>
-                <td>{cr.plain}</td>
-                <td>{cr.basis}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <h3>Crop table</h3>
-      <p>Every value has a source or a stated reason. Class scores (0 to 1) are judgments made for this project, not measurements, and are not calibrated to this valley.</p>
       {!kb ? (
-        <p>Loading the crop table…</p>
+        <p>Open a region to see its priorities, crop table and references.</p>
       ) : (
         <>
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Priority</th>
+                  <th>What it rewards</th>
+                  <th>Built from</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(kb.criteria).map(([id, cr]) => (
+                  <tr key={id}>
+                    <td>
+                      <strong>{cr.label}</strong>
+                    </td>
+                    <td>{cr.plain}</td>
+                    <td>{cr.basis}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Crop table for {region!.region.short}</h3>
+          <p>{kb.region_note} Every value has a source or a stated reason. Class scores (0 to 1) are judgments made for this project, not measurements, and have not been reviewed by a local agronomist.</p>
           <label className="lp-row crop-pick">
             <span>Crop</span>
             <select value={crop} onChange={(e) => setCrop(e.target.value)}>
-              {Object.entries(kb.crops ?? {}).map(([id, v]: [string, any]) => (
+              {Object.entries(kb.crops).map(([id, v]) => (
                 <option key={id} value={id}>
                   {v.label}
                 </option>
@@ -173,7 +165,7 @@ export function MethodModal({ meta, onClose }: { meta: Meta; onClose: () => void
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.entries(c.traits).map(([k, v]) => (
+                    {Object.entries(c.traits as Record<string, unknown>).map(([k, v]) => (
                       <tr key={k}>
                         <td>{k.replace(/_/g, " ")}</td>
                         <td className="num">{Array.isArray(v) ? v.join(" – ") : v === null ? "not documented" : String(v)}</td>

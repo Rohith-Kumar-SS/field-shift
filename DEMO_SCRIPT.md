@@ -1,20 +1,43 @@
 # DEMO_SCRIPT
 
-Two parts: a 3-minute walkthrough to record or present, and a one-page summary for the
-NASA Space Apps judges.
+Three parts: a 3-minute India walkthrough, a 3-minute Nevada walkthrough, and a one-page
+summary for the NASA Space Apps judges.
 
 ## Before you start
 
+Open the live site, https://rohith-kumar-ss.github.io/field-shift/, or run it locally:
+
 ```bash
-python tasks.py dev      # API on :8360, app on :5180
+python tasks.py dev      # http://localhost:5180 (a static site: there is no API to start)
 ```
 
-Open http://localhost:5180 in a desktop browser at full width. Have the page loaded and
-the map tiles drawn before you start talking. Numbers quoted below are what the app
-shows today for Field 5 and Field 2 with the default sliders; read them off the screen
-rather than from this page, in case the data has been rebuilt.
+Use a desktop browser at full width, with the page loaded and the map tiles drawn before
+you start talking. Numbers quoted below are what the app shows today with the default
+sliders; read them off the screen rather than from this page, in case the data has been
+rebuilt.
 
-## The 3-minute walkthrough
+## India walkthrough (3 minutes)
+
+Persona: a rice-wheat farmer near Sangrur, Punjab, whose tubewell has to reach deeper
+every few years. The question: *"What could I grow instead of paddy that eases the water
+pressure without giving up assured income, and what would I need to check first?"*
+
+| Time | Do | Say |
+| :-- | :-- | :-- |
+| 0:00 | Landing page. Point at the two rings. | "Same field, a different rotation. Each ring is one year seen from above: colour is a crop holding the ground, the pale gap is bare soil. Rice then wheat leaves May bare and needs about 1,650 mm of irrigation. Maize, wheat and summer moong keeps it covered on about 1,000." |
+| 0:15 | Scroll to the three region cards. Point at the bar charts. | "Three pilot areas. The bars are rain by month, the line is what the weather asks for. Nevada: almost no rain. Punjab: a July-August monsoon. The Cauvery delta: rain in October to December. Same tool, same NASA sources, different ground data." |
+| 0:30 | **Open Sangrur.** Let the map descend. Click plot **3**. | "From orbit down to the fields. There is no crop map or field-boundary layer here, so these are 300-metre sample blocks of farmland, and the tool is honest about that." |
+| 0:45 | Point at the crop-season strip and the tiles. | "It cannot see which crop, but it can count: two green seasons a year, peaking in February and August. Rain 510 mm, the weather asks for 1,740. And NASA's GRACE satellites show stored water across this region falling 3.8 cm every year since 2002." |
+| 1:05 | Point at **What I grow now**. | "Because no map says what is grown, the farmer does. Two seasons a year matches rice-wheat, so that is the starting point." |
+| 1:15 | Point at the cards. | "Five rotations, the current one included. Under the default priorities maize-wheat-moong scores highest, mainly on water: about 650 mm a year less. Rice-wheat is last on water but first on assured income. The tool says both." |
+| 1:35 | Drag **Income and assured sale** to the top, **Save water** to zero. | "Now I am a farmer who cannot risk the mandi price. Watch the cards move. There is no single best rotation, only the best fit for your priorities." Press **Reset**. |
+| 1:50 | Under Markets choose **Only crops with assured buying**. | "Tell it I only sell at the support price, and maize and cotton lose income score, with the reason written on the card." Put it back. |
+| 2:05 | Open **Why, benefits, risks and what to check** on the top card. | "Every suggestion explains itself with this field's numbers, then lists risks, what the tool does not know, and a checklist for the local agriculture officer or KVK." |
+| 2:20 | Click **See evidence: Weather**. | "Here is why ground data matters. NASA's weather model does not know this plain is irrigated: it counts 70 days a year above 40 degrees. India Meteorological Department stations measured 31. We correct the NASA record to the stations month by month." |
+| 2:40 | Evidence tab **Long-term water**. | "GRACE weighs the Earth's water from orbit. It is the only way to see groundwater from space, and it covers 300 km, so we say plainly: this is the region, not your tubewell." |
+| 2:50 | Switch region to **Cauvery delta**, pick a plot. | "Same tool in Tamil Nadu: kuruvai, thaladi and samba rice, canal water instead of tubewells, and here GRACE shows no decline. The rotations and the questions change; the method does not." |
+
+## Nevada walkthrough (3 minutes)
 
 Persona: an alfalfa grower in Diamond Valley, Nevada, whose groundwater allocation is
 being cut year by year. The question: *"What could I rotate into that eases the water
@@ -33,7 +56,7 @@ pressure without wrecking my hay income, and what would I need to check first?"*
 | 2:05 | Point at the frost risk line, then click **See evidence: Weather**. | "Here is why ground data matters. NASA's weather grid alone gives this valley 134 frost-free days. Corrected with station data it is 81. Teff needs 75, so it only fits in about 70 % of years. Satellites and ground measurements are stronger together." |
 | 2:25 | Open **Where each score comes from** > **Save water**. | "Nothing is a black box. Each score opens to its formula, its inputs and their sources, with a confidence level. This one is anchored to OpenET: the field used 82 % of the textbook figure." |
 | 2:40 | Set **Warmer by** to +3 °C. | "What if it warms by three degrees? Irrigation need rises by about 60 to 70 mm for every rotation and the frost-free season lengthens. It is a sensitivity test, and it is labelled as one." Reset. |
-| 2:50 | Click **Groundwater** in the evidence tabs. | "And the long view: USGS wells near this field. The water table has been falling for decades. That is what a satellite cannot show at this scale and a well can." |
+| 2:50 | Click **Long-term water** in the evidence tabs. | "And the long view: USGS wells near this field. The water table has been falling for decades. That is what a satellite cannot show at this scale and a well can." |
 | 3:00 | Point at the checklist on the card. | "It ends with a checklist to take to a local agronomist. The tool supports the farmer's judgment. It does not replace it." |
 
 ### If you have 30 more seconds
@@ -43,8 +66,8 @@ pressure without wrecking my hay income, and what would I need to check first?"*
 - **Map layers** > *Summer greenness*, and drag the year slider back to 2018 to watch
   pivots appear and go idle.
 - **Draw my own field**, tap four corners inside the dashed box, **Finish field**: it is
-  scored from the local rasters, with OpenET and MODIS marked "not loaded" and
-  confidence lowered.
+  scored in the browser from a 140 m grid of soil, terrain and greenness, with satellite
+  water use and MODIS marked "not available here" and confidence lowered.
 - **About the data**: every source with its status, resolution, caveats and credit. A
   source that fails to load is shown as missing with the step needed, never faked.
 
@@ -69,8 +92,11 @@ their own priorities and limits, and compare five crop rotations, the existing o
 included, each with reasons, evidence, benefits, information gaps, risks, a confidence
 level and a checklist for a local expert.
 
-**Pilot.** Diamond Valley, Nevada: irrigated alfalfa under centre pivots in Nevada's
-first Critical Management Area for groundwater. 14 real fields detected from Landsat.
+**Pilots.** Three farming systems under water stress, one method: Diamond Valley, Nevada
+(irrigated alfalfa under centre pivots, 14 fields detected from Landsat); Sangrur, Punjab
+(rice-wheat on tubewells, 12 sample plots); the Cauvery delta, Tamil Nadu (canal-fed
+paddy, 12 sample plots). Live at https://rohith-kumar-ss.github.io/field-shift/ as a
+static site: the scoring runs in the browser.
 
 ### Impact
 
@@ -106,8 +132,13 @@ first Critical Management Area for groundwater. 14 real fields detected from Lan
   textbook water demand against OpenET (fields use 68-86 % of it).
 - Uncertainty is shown, not hidden: a confidence level on every score, OpenET model
   spread, doubtful years flagged, missing sources named on every field.
+- The same cross-checking carries to India with different ground data: NASA POWER
+  against India Meteorological Department stations (days above 40 °C near Sangrur: 70
+  raw, 31 at the stations), GRACE for the regional water trend (-3.8 cm a year over
+  Punjab since 2002), crop seasons counted from MODIS where no crop map exists.
 - Reproducible: one script per source, cached downloads, sanity checks logged in
-  DATA_LOG.md, 48 automated tests, no demo data.
+  DATA_LOG.md, 49 automated tests (one compares the browser engine with the Python
+  reference number by number), no demo data.
 
 ### Relevance
 
@@ -130,4 +161,5 @@ first Critical Management Area for groundwater. 14 real fields detected from Lan
 
 ### What is not done
 
-- One valley, 14 fields, no local expert review yet, no prices or yields.
+- Three pilot boxes, no local expert review yet, no prices or yields. In India the tool
+  counts crop seasons but cannot name the crop, and soil comes from a global model.

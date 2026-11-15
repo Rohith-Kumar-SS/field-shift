@@ -3,7 +3,7 @@
 
 PYTHON ?= python
 
-.PHONY: setup data dev test build serve check
+.PHONY: setup data dev test build serve check docs deploy
 
 setup:
 	$(PYTHON) tasks.py setup
@@ -25,3 +25,9 @@ serve:
 
 check:
 	$(PYTHON) tasks.py check
+
+docs:
+	$(PYTHON) tasks.py docs
+
+deploy:
+	$(PYTHON) tasks.py deploy

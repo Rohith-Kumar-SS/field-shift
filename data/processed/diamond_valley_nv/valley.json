@@ -29,7 +29,30 @@
    10
   ],
   "hot_day_c": 32,
-  "imperial": true
+  "imperial": true,
+  "has_frost": true,
+  "landmark": "Eureka",
+  "zoom": 11.6,
+  "greenness_layers": [
+   {
+    "id": "ndvi",
+    "title": "Summer greenness",
+    "months": [
+     6,
+     7,
+     8
+    ]
+   }
+  ],
+  "cover_months": [
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10
+  ]
  },
  "power_cells": {
   "P-116.250_+39.50": {
@@ -159,7 +182,7 @@
    "status": "ok",
    "resolution": "25 m Web Mercator",
    "date_range": "",
-   "credit": "Derived by this project from Landsat, CDL and SRTM.",
+   "credit": "Derived by this project from Landsat, the crop or land-cover map and SRTM.",
    "message": "18 overlays written",
    "action_needed": "",
    "is_demo_data": false,

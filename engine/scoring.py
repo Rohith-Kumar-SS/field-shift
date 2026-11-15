@@ -20,7 +20,7 @@ from typing import Any
 import numpy as np
 
 from .agromet import effective_precip_usda
-from .climate import MONTHS, Scenario, heat_days_in, prepare_daily, season_fit, summarise_for
+from .climate import MONTHS, Scenario, apply_scenario, heat_days_in, prepare_daily, season_fit, summarise_for
 from .history import existing_rotation
 from .knowledge import entry_months, fill_residue, reference_years, year_profiles
 
@@ -315,7 +315,7 @@ def evaluate_strategy(strategy: dict, ctx: dict, kb: dict, clim: dict, clim_base
         # water shortage -> yield (FAO-33): 1 - Ya/Ym = Ky * (1 - ETa/ETm)
         w = wy[i]
         rel_yield = 1.0
-        if w["etc"] > 0 and w["applied"] > supply_mm:
+        if w["etc"] > 0 and w["applied"] > supply_mm + 0.5:      # half a millimetre: not a rounding accident
             # a shortfall is shared in proportion between the crop's own need and the flooding water
             eta = w["pe"] + w["nir"] * supply_mm / w["applied"]
             rel_yield = clamp(1.0 - w["ky"] * (1.0 - eta / w["etc"]))
@@ -659,7 +659,8 @@ def why_suggested(res: dict, cond: dict, existing: dict, constraints: dict, kb: 
     if "adds_legume" in tags and res["scores"]["nitrogen"] > existing["scores"]["nitrogen"] + 0.1:
         leg = [c for c in res["crop_notes"] if c["n_score"] >= 0.5]
         credit = max((c["n_credit_kg_ha"][1] for c in leg if c.get("n_credit_kg_ha")), default=0)
-        txt = "It adds " + " and ".join(c["label"].lower() for c in leg) + ", which fix their own nitrogen"
+        txt = "It adds " + " and ".join(c["label"].lower() for c in leg) + (
+            ", which fixes its own nitrogen" if len(leg) == 1 else ", which fix their own nitrogen")
         txt += f" and can leave up to about {credit} kg N/ha for the next crop." if credit else "."
         if existing["scores"]["nitrogen"] < 0.05:
             txt = "The existing rotation has no legume. " + txt
@@ -794,8 +795,11 @@ def confidence_for(res: dict, details: dict, weights: dict, ctx: dict) -> dict:
 # ---------------------------------------------------------------------------
 def climate_for(ctx: dict, scenario: Scenario, kb: dict) -> dict:
     p = ctx["power"]
-    prep = prepare_daily(p["daily"], ctx["lat"], ctx["elevation_m"], p["grid_elevation_m"], scenario,
-                         precip=p.get("precip_override"), bias=p.get("bias"))
+    if "base" in p:         # already-corrected daily weather (the static site's per-field file)
+        prep = apply_scenario(p["base"], ctx["lat"], ctx["elevation_m"], scenario)
+    else:
+        prep = prepare_daily(p["daily"], ctx["lat"], ctx["elevation_m"], p["grid_elevation_m"], scenario,
+                             precip=p.get("precip_override"), bias=p.get("bias"))
     return summarise_for(prep, kb)
 
 

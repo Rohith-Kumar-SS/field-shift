@@ -1,10 +1,10 @@
 import maplibregl from "maplibre-gl";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { fmt, type Dict, type FieldsPayload, type Meta } from "../api";
+import { fieldNumber, fmt, loadSoilUnits, type Dict, type RegionData } from "../data";
+import { reducedMotion } from "../motion";
 
 interface Props {
-  meta: Meta;
-  fields: FieldsPayload;
+  region: RegionData;
   customFields: GeoJSON.Feature[];
   selectedId: string | null;
   onSelect: (id: string) => void;
@@ -17,12 +17,13 @@ interface Props {
 const RAMP = ["#E3EEF9", "#B5D0EC", "#7FAEDB", "#3F82C4", "#0B4F99"];
 
 const COLOR_BY: Dict<{ label: string; unit: string; digits: number; note: string }> = {
-  irrigation_need_mm: { label: "Irrigation need of the existing rotation", unit: "mm/yr", digits: 0, note: "Crop demand minus usable rain (model estimate)" },
-  openet_gs_et_mm: { label: "Water used, Apr–Oct (OpenET, 2021–25)", unit: "mm", digits: 0, note: "Satellite estimate of actual ET" },
+  irrigation_need_mm: { label: "Irrigation need of the current rotation", unit: "mm/yr", digits: 0, note: "Crop demand minus usable rain (model estimate)" },
+  et_annual_mm: { label: "Water used in a year (satellite, 2021–25)", unit: "mm", digits: 0, note: "Satellite estimate of actual evapotranspiration" },
+  seasons_per_year: { label: "Crop seasons seen each year", unit: "a year", digits: 0, note: "Counted from 25 years of MODIS greenness" },
   low_cover_months: { label: "Months a year with little green cover", unit: "months", digits: 0, note: "Landsat NDVI below 0.25 in at least half the years" },
-  om_pct: { label: "Soil organic matter, top 30 cm", unit: "%", digits: 1, note: "SSURGO soil survey, not a field sample" },
-  wind_erodibility_index: { label: "Soil wind-erodibility index", unit: "t/ac/yr", digits: 0, note: "SSURGO: higher blows more easily" },
-  ec_dsm: { label: "Soil salinity (EC), top 30 cm", unit: "dS/m", digits: 1, note: "SSURGO soil survey; alfalfa loses yield above 2" },
+  om_pct: { label: "Soil organic matter, top 30 cm", unit: "%", digits: 1, note: "Soil map, not a field sample" },
+  wind_erodibility_index: { label: "Soil wind-erodibility index", unit: "t/ac/yr", digits: 0, note: "Higher blows more easily" },
+  ec_dsm: { label: "Soil salinity (EC), top 30 cm", unit: "dS/m", digits: 1, note: "Soil survey; sensitive crops lose yield above 2" },
 };
 
 const SAT = "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/{z}/{y}/{x}.jpg";
@@ -36,7 +37,7 @@ function rampColor(v: number | null | undefined, min: number, max: number): stri
 
 const emptyFC = (): GeoJSON.FeatureCollection => ({ type: "FeatureCollection", features: [] });
 
-export default function MapView({ meta, fields, customFields, selectedId, onSelect, drawing, onDrawFinish, onDrawCancel }: Props) {
+export default function MapView({ region, customFields, selectedId, onSelect, drawing, onDrawFinish, onDrawCancel }: Props) {
   const el = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markers = useRef<maplibregl.Marker[]>([]);
@@ -54,34 +55,36 @@ export default function MapView({ meta, fields, customFields, selectedId, onSele
 
   selectRef.current = onSelect;
   drawingRef.current = drawing;
+  const ov = region.overlays;
+  const unit = region.region.field_unit === "pivot" ? "field" : "plot";
 
-  const years = useMemo(
-    () => Array.from(new Set(meta.overlays.layers.filter((l) => l.year).map((l) => l.year as number))).sort(),
-    [meta],
+  const years = useMemo(() => Array.from(new Set(ov.layers.filter((l) => l.group === group && l.year).map((l) => l.year as number))).sort(), [ov, group]);
+
+  const colorOptions = useMemo(
+    () => Object.keys(COLOR_BY).filter((k) => region.fields.features.some((f) => typeof (f.properties as Dict)?.[k] === "number")),
+    [region],
   );
 
   const allFields = useMemo<GeoJSON.FeatureCollection>(() => {
-    const feats = [...fields.pilot.features, ...customFields];
+    const feats = [...region.fields.features, ...customFields];
     const vals = feats.map((f) => (f.properties as Dict)?.[colorBy]).filter((v) => typeof v === "number") as number[];
     const [min, max] = vals.length ? [Math.min(...vals), Math.max(...vals)] : [0, 1];
     return {
       type: "FeatureCollection",
-      features: feats.map((f) => ({
-        ...f,
-        properties: { ...(f.properties as Dict), _fill: colorBy === "none" ? "rgba(0,0,0,0)" : rampColor((f.properties as Dict)?.[colorBy], min, max) },
-      })),
+      features: feats.map((f) => ({ ...f, properties: { ...(f.properties as Dict), _fill: colorBy === "none" ? "rgba(0,0,0,0)" : rampColor((f.properties as Dict)?.[colorBy], min, max) } })),
     };
-  }, [fields, customFields, colorBy]);
+  }, [region, customFields, colorBy]);
 
   const range = useMemo(() => {
     const vals = allFields.features.map((f) => (f.properties as Dict)?.[colorBy]).filter((v) => typeof v === "number") as number[];
     return vals.length ? [Math.min(...vals), Math.max(...vals)] : null;
   }, [allFields, colorBy]);
 
-  // --- create the map once ---------------------------------------------------
+  // --- create the map once (the component is re-mounted when the region changes) ----------
   useEffect(() => {
     if (!el.current || mapRef.current) return;
-    const [w, s, e, n] = meta.pilot.bbox;
+    const [w, s, e, n] = region.region.bbox as [number, number, number, number];
+    const still = reducedMotion() || document.hidden;
     const map = new maplibregl.Map({
       container: el.current,
       style: {
@@ -95,19 +98,18 @@ export default function MapView({ meta, fields, customFields, selectedId, onSele
           { id: "osm", type: "raster", source: "osm", layout: { visibility: "none" } },
         ],
       },
-      bounds: [w, s, e, n],
-      fitBoundsOptions: { padding: 28 },
+      // start high above the region and come down to the fields: from orbit to the farm
+      ...(still ? { bounds: [w, s, e, n] as [number, number, number, number], fitBoundsOptions: { padding: 28 } } : { center: region.region.centroid as [number, number], zoom: 5.2 }),
       attributionControl: { compact: true },
       maxZoom: 16,
-      minZoom: 8,
+      minZoom: 4,
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
-    map.addControl(new maplibregl.ScaleControl({ unit: "imperial" }), "bottom-right");
+    map.addControl(new maplibregl.ScaleControl({ unit: region.region.imperial ? "imperial" : "metric" }), "bottom-right");
     mapRef.current = map;
 
     // Add the field layers as soon as the style is parsed, without waiting for the satellite
-    // tiles (which can be slow, or missing offline). The style may already be ready by the
-    // time we get here, so check first and guard against running twice.
+    // tiles (which can be slow, or missing offline).
     let started = false;
     const init = () => {
       if (started) return;
@@ -115,23 +117,23 @@ export default function MapView({ meta, fields, customFields, selectedId, onSele
       const box: GeoJSON.Feature = { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: [[w, s], [e, s], [e, n], [w, n], [w, s]] } };
       map.addSource("pilot-box", { type: "geojson", data: box });
       map.addSource("soil", { type: "geojson", data: emptyFC() });
-      map.addSource("context", { type: "geojson", data: fields.context });
+      map.addSource("context", { type: "geojson", data: region.context ?? emptyFC() });
       map.addSource("fields", { type: "geojson", data: emptyFC() });
-      map.addSource("wells", { type: "geojson", data: fields.wells });
+      map.addSource("wells", { type: "geojson", data: region.wells ?? emptyFC() });
       map.addSource("draw", { type: "geojson", data: emptyFC() });
 
       map.addLayer({ id: "soil-fill", type: "fill", source: "soil", layout: { visibility: "none" }, paint: { "fill-color": ["get", "_c"], "fill-opacity": 0.55 } });
-      map.addLayer({ id: "soil-line", type: "line", source: "soil", layout: { visibility: "none" }, paint: { "line-color": "#1d2a2e", "line-width": 0.8, "line-opacity": 0.7 } });
+      map.addLayer({ id: "soil-line", type: "line", source: "soil", layout: { visibility: "none" }, paint: { "line-color": "#14211e", "line-width": 0.8, "line-opacity": 0.7 } });
       map.addLayer({ id: "context-line", type: "line", source: "context", paint: { "line-color": "#ffffff", "line-width": 1, "line-opacity": 0.45 } });
       map.addLayer({ id: "fields-fill", type: "fill", source: "fields", paint: { "fill-color": ["get", "_fill"], "fill-opacity": 0.82 } });
-      map.addLayer({ id: "fields-casing", type: "line", source: "fields", paint: { "line-color": "#10191c", "line-width": 4.5, "line-opacity": 0.7 } });
+      map.addLayer({ id: "fields-casing", type: "line", source: "fields", paint: { "line-color": "#0c1614", "line-width": 4.5, "line-opacity": 0.7 } });
       map.addLayer({ id: "fields-line", type: "line", source: "fields", paint: { "line-color": "#ffffff", "line-width": 2.2 } });
-      map.addLayer({ id: "fields-selected", type: "line", source: "fields", filter: ["==", ["get", "field_id"], ""], paint: { "line-color": "#FFD23F", "line-width": 5 } });
+      map.addLayer({ id: "fields-selected", type: "line", source: "fields", filter: ["==", ["get", "field_id"], ""], paint: { "line-color": "#F2B705", "line-width": 5 } });
       map.addLayer({ id: "wells", type: "circle", source: "wells", layout: { visibility: "none" }, paint: { "circle-radius": 5, "circle-color": "#0072B2", "circle-stroke-color": "#fff", "circle-stroke-width": 2 } });
       map.addLayer({ id: "pilot-box", type: "line", source: "pilot-box", paint: { "line-color": "#ffffff", "line-width": 1.5, "line-dasharray": [3, 3], "line-opacity": 0.85 } });
-      map.addLayer({ id: "draw-fill", type: "fill", source: "draw", filter: ["==", ["geometry-type"], "Polygon"], paint: { "fill-color": "#FFD23F", "fill-opacity": 0.25 } });
-      map.addLayer({ id: "draw-line", type: "line", source: "draw", paint: { "line-color": "#FFD23F", "line-width": 3 } });
-      map.addLayer({ id: "draw-pts", type: "circle", source: "draw", filter: ["==", ["geometry-type"], "Point"], paint: { "circle-radius": 6, "circle-color": "#FFD23F", "circle-stroke-color": "#10191c", "circle-stroke-width": 2 } });
+      map.addLayer({ id: "draw-fill", type: "fill", source: "draw", filter: ["==", ["geometry-type"], "Polygon"], paint: { "fill-color": "#F2B705", "fill-opacity": 0.25 } });
+      map.addLayer({ id: "draw-line", type: "line", source: "draw", paint: { "line-color": "#F2B705", "line-width": 3 } });
+      map.addLayer({ id: "draw-pts", type: "circle", source: "draw", filter: ["==", ["geometry-type"], "Point"], paint: { "circle-radius": 6, "circle-color": "#F2B705", "circle-stroke-color": "#0c1614", "circle-stroke-width": 2 } });
 
       map.on("click", (ev) => {
         if (drawingRef.current) {
@@ -153,6 +155,7 @@ export default function MapView({ meta, fields, customFields, selectedId, onSele
       attrib?.classList.remove("maplibregl-compact-show");
       attrib?.removeAttribute("open");
       setReady(true);
+      if (!still) map.fitBounds([w, s, e, n], { padding: 28, duration: 2600, essential: false, curve: 1.3 });
     };
     if (map.isStyleLoaded()) init();
     else {
@@ -203,12 +206,13 @@ export default function MapView({ meta, fields, customFields, selectedId, onSele
     if (!map || !ready || !map.getSource("fields")) return;
     (map.getSource("fields") as maplibregl.GeoJSONSource).setData(allFields);
     markers.current.forEach((m) => m.remove());
-    markers.current = allFields.features.map((f) => {
+    markers.current = allFields.features.map((f, i) => {
       const p = f.properties as Dict;
       const node = document.createElement("button");
       node.className = "field-label" + (p.field_id === selectedId ? " is-selected" : "");
-      node.textContent = p.is_custom ? "★" : String(p.field_id).replace("DV-", "").replace(/^0/, "");
-      node.title = `${p.name}: ${p.crop_latest ?? ""}`;
+      node.style.animationDelay = `${Math.min(i, 16) * 45}ms`;
+      node.textContent = p.is_custom ? "★" : fieldNumber(p.field_id);
+      node.title = `${p.name}${p.crop_latest ? `: ${p.crop_latest}` : ""}`;
       node.setAttribute("aria-label", `Select ${p.name}`);
       node.onclick = (e) => {
         e.stopPropagation();
@@ -236,16 +240,16 @@ export default function MapView({ meta, fields, customFields, selectedId, onSele
     if (!map || !ready || !map.getSource("fields")) return;
     map.setLayoutProperty("sat", "visibility", basemap === "satellite" ? "visible" : "none");
     map.setLayoutProperty("osm", "visibility", basemap === "streets" ? "visible" : "none");
-    map.setPaintProperty("context-line", "line-color", basemap === "satellite" ? "#ffffff" : "#1d2a2e");
-    map.setPaintProperty("pilot-box", "line-color", basemap === "satellite" ? "#ffffff" : "#1d2a2e");
+    map.setPaintProperty("context-line", "line-color", basemap === "satellite" ? "#ffffff" : "#14211e");
+    map.setPaintProperty("pilot-box", "line-color", basemap === "satellite" ? "#ffffff" : "#14211e");
   }, [basemap, ready]);
 
   // --- raster and vector overlays ------------------------------------------------
   const overlay = useMemo(() => {
     if (group === "none" || group === "soil" || group === "wells") return null;
-    const list = meta.overlays.layers.filter((l) => l.group === group);
+    const list = ov.layers.filter((l) => l.group === group);
     return list.find((l) => l.year === year) ?? list[list.length - 1] ?? null;
-  }, [group, year, meta]);
+  }, [group, year, ov]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -253,26 +257,26 @@ export default function MapView({ meta, fields, customFields, selectedId, onSele
     if (map.getLayer("overlay")) map.removeLayer("overlay");
     if (map.getSource("overlay")) map.removeSource("overlay");
     if (overlay) {
-      map.addSource("overlay", { type: "image", url: `/overlays/${overlay.file}`, coordinates: meta.overlays.corners as any });
-      map.addLayer({ id: "overlay", type: "raster", source: "overlay", paint: { "raster-opacity": 0.88, "raster-resampling": "nearest" } }, "soil-fill");
+      map.addSource("overlay", { type: "image", url: `${region.base}overlays/${overlay.file}`, coordinates: ov.corners as any });
+      map.addLayer({ id: "overlay", type: "raster", source: "overlay", paint: { "raster-opacity": 0.88, "raster-resampling": "nearest", "raster-fade-duration": 250 } }, "soil-fill");
     }
     map.setLayoutProperty("soil-fill", "visibility", group === "soil" ? "visible" : "none");
     map.setLayoutProperty("soil-line", "visibility", group === "soil" ? "visible" : "none");
     map.setLayoutProperty("wells", "visibility", group === "wells" ? "visible" : "none");
-  }, [overlay, group, ready, meta]);
+  }, [overlay, group, ready, ov, region.base]);
 
   useEffect(() => {
     if (group !== "soil" || soil) return;
-    fetch("/api/soil-mapunits")
-      .then((r) => r.json())
-      .then((fc: GeoJSON.FeatureCollection) => {
+    loadSoilUnits(region)
+      .then((fc) => {
+        if (!fc) return setSoil(emptyFC());
         const oms = fc.features.map((f) => (f.properties as Dict)?.om_pct_0_30).filter((v) => typeof v === "number") as number[];
         const [min, max] = [Math.min(...oms), Math.max(...oms)];
         fc.features.forEach((f) => ((f.properties as Dict)._c = rampColor((f.properties as Dict)?.om_pct_0_30, min, max)));
         setSoil(fc);
       })
       .catch(() => setSoil(emptyFC()));
-  }, [group, soil]);
+  }, [group, soil, region]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -288,9 +292,7 @@ export default function MapView({ meta, fields, customFields, selectedId, onSele
       if (!p || drawingRef.current) return;
       new maplibregl.Popup({ maxWidth: "280px" })
         .setLngLat(ev.lngLat)
-        .setHTML(
-          `<strong>${p.muname ?? "Soil map unit"}</strong><br/>Surface: ${p.surface_texture ?? "–"}<br/>Organic matter: ${p.om_pct_0_30 != null ? Number(p.om_pct_0_30).toFixed(1) + " %" : "–"}<br/>Drainage: ${p.drainage_class ?? "–"}<br/><em>USDA NRCS soil survey map unit</em>`,
-        )
+        .setHTML(`<strong>${p.muname ?? "Soil map unit"}</strong><br/>Surface: ${p.surface_texture ?? "–"}<br/>Organic matter: ${p.om_pct_0_30 != null ? Number(p.om_pct_0_30).toFixed(1) + " %" : "–"}<br/>Drainage: ${p.drainage_class ?? "–"}<br/><em>USDA NRCS soil survey map unit</em>`)
         .addTo(map);
     };
     const onWellClick = (ev: maplibregl.MapLayerMouseEvent) => {
@@ -313,12 +315,16 @@ export default function MapView({ meta, fields, customFields, selectedId, onSele
     };
   }, [ready]);
 
-  const legend = overlay ? meta.overlays.legends[overlay.group] : null;
-  const hasYears = group === "ndvi" || group === "cdl";
+  const legend = overlay ? ov.legends[overlay.group] : null;
+  const pickGroup = (g: string) => {
+    setGroup(g);
+    const ys = ov.layers.filter((l) => l.group === g && l.year).map((l) => l.year as number);
+    if (ys.length && !ys.includes(year)) setYear(Math.max(...ys));
+  };
 
   return (
     <div className="map-wrap">
-      <div ref={el} className="map" role="application" aria-label="Map of pilot fields in Diamond Valley, Nevada" />
+      <div ref={el} className="map" role="application" aria-label={`Satellite map of the ${unit}s in ${region.region.short}`} />
 
       <div className="map-tools">
         <button className="btn btn-map" onClick={() => setPanelOpen((v) => !v)} aria-expanded={panelOpen}>
@@ -335,31 +341,32 @@ export default function MapView({ meta, fields, customFields, selectedId, onSele
             </label>
             <label className="lp-row">
               <span>Show on the map</span>
-              <select value={group} onChange={(e) => setGroup(e.target.value)}>
-                <option value="none">Fields only</option>
-                <option value="ndvi">Summer greenness (Landsat)</option>
-                <option value="cdl">Crop map (USDA)</option>
-                <option value="low_cover">Months with little green cover</option>
-                <option value="slope">Slope (SRTM)</option>
-                <option value="soil">Soil map units (organic matter)</option>
-                <option value="wells">Groundwater wells (USGS)</option>
+              <select value={group} onChange={(e) => pickGroup(e.target.value)}>
+                <option value="none">{unit === "field" ? "Fields only" : "Plots only"}</option>
+                {ov.groups.map((g) => (
+                  <option key={g} value={g}>
+                    {ov.legends[g]?.short ?? g}
+                  </option>
+                ))}
+                {region.extras.soil_units && <option value="soil">Soil map units (organic matter)</option>}
+                {region.wells && <option value="wells">Groundwater wells (USGS)</option>}
               </select>
             </label>
-            {hasYears && (
+            {years.length > 1 && (
               <label className="lp-row">
                 <span>
-                  Year <strong>{year}</strong>
+                  Year <strong>{overlay?.year ?? year}</strong>
                 </span>
                 <input type="range" min={years[0]} max={years[years.length - 1]} step={1} value={year} onChange={(e) => setYear(Number(e.target.value))} />
               </label>
             )}
             <label className="lp-row">
-              <span>Colour the fields by</span>
+              <span>Colour the {unit}s by</span>
               <select value={colorBy} onChange={(e) => setColorBy(e.target.value)}>
                 <option value="none">Outline only</option>
-                {Object.entries(COLOR_BY).map(([k, v]) => (
+                {colorOptions.map((k) => (
                   <option key={k} value={k}>
-                    {v.label}
+                    {COLOR_BY[k].label}
                   </option>
                 ))}
               </select>
@@ -389,7 +396,9 @@ export default function MapView({ meta, fields, customFields, selectedId, onSele
         <div className="legend">
           {legend?.type === "ramp" && (
             <div className="legend-block">
-              <div className="legend-title">{legend.title}</div>
+              <div className="legend-title">
+                {legend.title} {overlay?.year ?? ""}
+              </div>
               <div className="legend-ramp" style={{ background: `linear-gradient(90deg, ${legend.colors.map((c: number[]) => `rgb(${c.join(",")})`).join(",")})` }} />
               <div className="legend-ends">
                 <span>{legend.min}</span>
@@ -401,7 +410,7 @@ export default function MapView({ meta, fields, customFields, selectedId, onSele
           {legend?.type === "classes" && (
             <div className="legend-block">
               <div className="legend-title">
-                {legend.title} {overlay?.year}
+                {legend.title} {overlay?.year ?? ""}
               </div>
               <ul className="legend-classes">
                 {legend.classes.map((c: Dict) => (
@@ -427,7 +436,7 @@ export default function MapView({ meta, fields, customFields, selectedId, onSele
           )}
           {colorBy !== "none" && range && (
             <div className="legend-block">
-              <div className="legend-title">Fields: {COLOR_BY[colorBy].label}</div>
+              <div className="legend-title">{COLOR_BY[colorBy].label}</div>
               <div className="legend-steps">
                 {RAMP.map((c) => (
                   <i key={c} style={{ background: c }} />

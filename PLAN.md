@@ -145,3 +145,50 @@ reality differed, and what was done instead.
 | MODIS window around the pilot centre | Two edge fields fell outside: the sinusoidal grid is sheared at this longitude | Window widened; all 14 fields covered |
 
 Still open: review of the rotation library by a local agronomist.
+
+## 10. Second phase: India, a static site, and motion (November 2026)
+
+Asked for after the Nevada build: make it work for India, make the interface attractive and
+easy to use with motion that means something, and publish it on GitHub Pages.
+
+**Regions.** Punjab (Sangrur) and Tamil Nadu (Cauvery delta) were added and Nevada kept, behind a
+region switcher. `pipeline/regions.py` holds one entry per region; data lives in
+`data/{raw,processed}/<region>/`. Global NASA sources are shared; the ground side differs:
+
+| Need | USA | India |
+| :-- | :-- | :-- |
+| Field outlines | detected from Landsat (pivots) | 300 m sample blocks of ESA WorldCover cropland |
+| Crop history | USDA Cropland Data Layer, checked against Landsat | crop seasons counted from MODIS greenness; the farmer names the rotation |
+| Soil | USDA SSURGO | ISRIC SoilGrids 250 m |
+| Satellite ET | OpenET | FAO WaPOR v3 |
+| Ground correction of NASA POWER | gridMET | IMD rain-gauge and temperature grids |
+| Long-term water | USGS wells | GRACE / GRACE-FO mascons |
+
+**Engine changes.** One engine, three knowledge bases. New settings: `pest_model` (perennial
+stand or annual crops), `existing` (read from history or chosen), `water_reference`, region
+thresholds for a hot day and a heavy-rain day. The water score now uses water *delivered* to the
+field (crop need plus the water paddy takes to be puddled and flooded), because scoring crop need
+alone made rice-wheat look no thirstier than maize-wheat-moong, which no farmer would recognise.
+Where no crop map exists, the default "what I grow now" is the common rotation whose number of
+crops matches the green seasons seen from space.
+
+**What the India data forced.** NASA POWER ran 3-4 degC too hot over irrigated Punjab in summer
+(70 days above 40 degC against 31 at IMD stations), so IMD temperature was added as a second
+ground correction, not just rainfall. ORNL's MODIS service was down, so MODIS comes from
+Planetary Computer. GRACE has no OPeNDAP subset, so the one 44 MB file is downloaded and shared.
+
+**Static site.** GitHub Pages cannot run Python, so the FastAPI server was retired. The pipeline
+exports everything per region (`pipeline/s40_export.py`), including 30 years of corrected daily
+weather per field as a 131 KB binary, and the scoring engine was ported to TypeScript
+(`frontend/src/engine`). The Python engine stays as the tested reference; `tests/test_parity.py`
+runs both on the same fields and compares numbers and sentences. Porting exposed three places
+where the two languages differ silently (banker's rounding, Python 3.12's compensated `sum`,
+numpy's pairwise sum) and one comparison at exact equality that depended on the last bit of a
+float; all four are now handled explicitly. Fields drawn by the user are described in the browser
+from a 140 m "atlas" grid of soil, terrain, monthly greenness and crop-map values.
+
+**Interface.** A landing page with the two-ring comparison and one card per region, each with
+its water year as a small chart. Motion is used where it carries meaning: the map descends from
+orbit to the pilot box; rings draw themselves month by month; cards slide to their new rank when a
+priority changes; figures glide to new values under what-if weather. All of it stands down under
+`prefers-reduced-motion`. A pick-by-number row under the map serves keyboards and small screens.
