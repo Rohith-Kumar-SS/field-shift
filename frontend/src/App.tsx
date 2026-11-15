@@ -12,6 +12,8 @@ import type { Clim } from "./engine/climate";
 import { buildCustomField, loadAtlas } from "./engine/custom";
 import { baselineClimate, defaultConstraints, scoreField } from "./engine/scoring";
 
+type ModalName = "glossary" | "sources" | "method";
+
 const defaultWeights = (r: RegionData) => Object.fromEntries(Object.entries(r.kb.criteria).map(([id, c]) => [id, c.default_weight]));
 const regionFromHash = () => decodeURIComponent(window.location.hash.replace(/^#\/?/, "")) || null;
 
@@ -31,10 +33,23 @@ function Brand({ onHome }: { onHome: () => void }) {
   );
 }
 
-export default function App() {
-  const [regions, setRegions] = useState<RegionInfo[] | null>(null);
-  const [glossary, setGlossary] = useState<Glossary | null>(null);
-  const [regionId, setRegionId] = useState<string | null>(regionFromHash);
+function Footer() {
+  return (
+    <footer className="footer">
+      <p>
+        Built for the 2026 NASA Space Apps Challenge, “Field Shift: Adapting Farms with NASA Data”. Data: NASA POWER, GPM IMERG, SMAP, Landsat, MODIS, SRTM and GRACE; USDA NRCS and NASS; USGS; OpenET; gridMET; India Meteorological
+        Department; ISRIC SoilGrids; FAO WaPOR; ESA WorldCover. NASA does not endorse this tool. The rotation libraries have not been reviewed by a local agronomist.
+      </p>
+    </footer>
+  );
+}
+
+/**
+ * Everything that belongs to one region: its data, the selected field, priorities, scenario.
+ * App renders it with `key={regionId}`, so switching region starts from a clean slate and a
+ * field from one region can never be asked for in another.
+ */
+function Workspace({ info, onRegion, onModal }: { info: RegionInfo | undefined; onRegion: (r: RegionData) => void; onModal: (m: ModalName) => void }) {
   const [region, setRegion] = useState<RegionData | null>(null);
   const [customFields, setCustomFields] = useState<GeoJSON.Feature[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -45,38 +60,17 @@ export default function App() {
   const [existingId, setExistingId] = useState<string | null>(null);
   const [panel, setPanel] = useState("water");
   const [drawing, setDrawing] = useState(false);
-  const [modal, setModal] = useState<null | "glossary" | "sources" | "method">(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const custom = useRef<Dict<FieldData>>({});
   const climBase = useRef<{ key: string; clim: Clim } | null>(null);
-
-  // ---- first load and navigation ------------------------------------------------
-  useEffect(() => {
-    loadRegions().then(setRegions).catch((e: Error) => setError(`The data files could not be loaded (${e.message}). If you are running this yourself, run "python tasks.py data export" first.`));
-    loadGlossary().then(setGlossary).catch(() => undefined);
-    const onHash = () => setRegionId(regionFromHash());
-    window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
-  }, []);
-
-  const go = useCallback((id: string | null) => {
-    window.location.hash = id ? `/${id}` : "";
-    setRegionId(id);
-    window.scrollTo({ top: 0 });
-  }, []);
+  const regionId = info?.id;
 
   useEffect(() => {
-    setRegion(null);
-    setSelectedId(null);
-    setField(null);
-    setCustomFields([]);
-    setDrawing(false);
-    setNotice(null);
-    setExistingId(null);
-    setScenario({ rain_pct: 0, temp_c: 0 });
-    custom.current = {};
-    if (!regionId) return;
+    if (!regionId) {
+      setError("That region is not in this build. Choose one from the list.");
+      return;
+    }
     let alive = true;
     loadRegion(regionId)
       .then((r) => {
@@ -84,12 +78,13 @@ export default function App() {
         setRegion(r);
         setWeights(defaultWeights(r));
         setConstraints(defaultConstraints(r.kb));
-        setError(null);
+        onRegion(r);
       })
       .catch((e: Error) => alive && setError(`That region could not be loaded: ${e.message}`));
     return () => {
       alive = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [regionId]);
 
   // ---- the selected field: its context, evidence and 30 years of daily weather ----
@@ -130,6 +125,7 @@ export default function App() {
   const select = useCallback((id: string) => {
     setSelectedId(id);
     setNotice(null);
+    setError(null);
   }, []);
 
   const showEvidence = useCallback((p: string) => {
@@ -168,11 +164,127 @@ export default function App() {
     setExistingId(null);
   };
 
+  if (!region) {
+    return (
+      <main className="fatal">
+        {!error && <div className="loader" aria-hidden="true" />}
+        <p>{error ?? `Coming down to ${info?.short ?? "the region"}…`}</p>
+      </main>
+    );
+  }
+
+  const unit = region.region.field_unit === "pivot" ? "field" : "plot";
+  const pending = region.sources.filter((s) => s.status === "failed");
+
+  return (
+    <main className="work">
+      <section className="stage">
+        <div className="stage-map">
+          <MapView region={region} customFields={customFields} selectedId={selectedId} onSelect={select} drawing={drawing} onDrawFinish={finishDraw} onDrawCancel={() => setDrawing(false)} />
+          <div className="map-foot">
+            <span>
+              {selectedId ? `Tap another numbered ${unit} to switch.` : `Tap a numbered ${unit} to begin.`}{" "}
+              {unit === "field" ? "Faint circles are other pivots, not analysed." : "Each plot is a 300 m block of farmland: a neighbourhood of small fields."} The dashed box is the pilot area.
+            </span>
+            {!drawing && region.atlas && (
+              <button className="btn" onClick={() => setDrawing(true)}>
+                Draw my own field
+              </button>
+            )}
+          </div>
+          <div className="field-picker" role="group" aria-label={`Choose a ${unit} by number`}>
+            <span>Or pick by number:</span>
+            {[...region.fields.features, ...customFields].map((f) => {
+              const p = f.properties as Dict;
+              return (
+                <button key={p.field_id} className={p.field_id === selectedId ? "on" : ""} aria-pressed={p.field_id === selectedId} title={p.name} onClick={() => select(p.field_id)}>
+                  {p.is_custom ? "★" : fieldNumber(p.field_id)}
+                </button>
+              );
+            })}
+          </div>
+          {notice && <p className="notice" role="status">{notice}</p>}
+          {error && <p className="notice notice-error" role="alert">{error}</p>}
+        </div>
+        <div className="stage-side">
+          {!feature ? (
+            <section className="block intro">
+              <p className="eyebrow">{region.region.name}</p>
+              <h2>Start with a {unit}</h2>
+              <p>{region.region.tagline}.</p>
+              <p>
+                Pick one of the {region.fields.features.length} numbered {unit}s on the map, or draw your own inside the dashed box. You will see how it has been farmed, what the weather, water, soil and satellite record say about it,
+                and how {Object.keys(region.kb.strategies).length + (region.kb.settings.existing === "from_history" ? 1 : 0)} rotations compare under the priorities you set.
+              </p>
+              <ul className="plain">
+                <li>What you grow now is always one of them, so you can see what changes.</li>
+                <li>Every score opens to show the numbers and sources behind it.</li>
+                <li>Every rotation lists what the tool does not know and what to check locally.</li>
+              </ul>
+              {pending.length > 0 && (
+                <p className="notice">
+                  {pending.map((p) => p.title).join(", ")} could not be loaded yet.{" "}
+                  <button className="link-btn" onClick={() => onModal("sources")}>
+                    See what is needed
+                  </button>
+                </p>
+              )}
+            </section>
+          ) : (
+            <FieldSummary feature={feature} evidence={field?.evidence ?? null} region={region} onEvidence={showEvidence} onShowSources={() => onModal("sources")} />
+          )}
+        </div>
+      </section>
+
+      {feature && (
+        <section className="decide">
+          <Priorities region={region} weights={weights} constraints={constraints} scenario={scenario} result={result} existingId={existingId} onWeights={setWeights} onConstraints={setConstraints} onScenario={setScenario}
+            onExisting={setExistingId} onReset={reset} />
+          {result ? (
+            <Strategies result={result} region={region} onEvidence={showEvidence} />
+          ) : (
+            <section className="block strategies">
+              <div className="loader" aria-hidden="true" />
+              <p>Reading thirty years of weather for this {unit}…</p>
+            </section>
+          )}
+        </section>
+      )}
+      {feature && field && field.context.field_id === selectedId && <Evidence ev={field.evidence} region={region} panel={panel} onPanel={setPanel} />}
+    </main>
+  );
+}
+
+export default function App() {
+  const [regions, setRegions] = useState<RegionInfo[] | null>(null);
+  const [glossary, setGlossary] = useState<Glossary | null>(null);
+  const [regionId, setRegionId] = useState<string | null>(regionFromHash);
+  const [loaded, setLoaded] = useState<RegionData | null>(null);
+  const [modal, setModal] = useState<null | ModalName>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadRegions().then(setRegions).catch((e: Error) => setError(`The data files could not be loaded (${e.message}). If you are running this yourself, run "python tasks.py data export" first.`));
+    loadGlossary().then(setGlossary).catch(() => undefined);
+    const onHash = () => setRegionId(regionFromHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  const go = useCallback((id: string | null) => {
+    window.location.hash = id ? `/${id}` : "";
+    setRegionId(id);
+    window.scrollTo({ top: 0 });
+  }, []);
+
+  // the loaded data only counts while it is the region on screen
+  const region = loaded && loaded.id === regionId ? loaded : null;
+
   const modals = (
     <>
       {modal === "glossary" && glossary && <GlossaryModal glossary={glossary} onClose={() => setModal(null)} />}
       {modal === "sources" && region && <SourcesModal region={region} onClose={() => setModal(null)} />}
-      {modal === "method" && <MethodModal region={region} onClose={() => setModal(null)} />}
+      {modal === "method" && <MethodModal key={region?.id ?? "none"} region={region} onClose={() => setModal(null)} />}
     </>
   );
 
@@ -212,8 +324,6 @@ export default function App() {
     );
   }
 
-  const info = regions.find((r) => r.id === regionId);
-  const unit = info?.field_unit === "pivot" ? "field" : "plot";
   const pending = region?.sources.filter((s) => s.status === "failed") ?? [];
 
   return (
@@ -246,101 +356,9 @@ export default function App() {
         <strong>This tool compares options. It does not tell you what to plant.</strong> It supports, and does not replace, your own judgment and local agricultural expertise.
       </p>
 
-      {!region ? (
-        <main className="fatal">
-          <div className="loader" aria-hidden="true" />
-          <p>{error ?? `Coming down to ${info?.short ?? "the region"}…`}</p>
-        </main>
-      ) : (
-        <main className="work" key={region.id}>
-          <section className="stage">
-            <div className="stage-map">
-              <MapView key={region.id} region={region} customFields={customFields} selectedId={selectedId} onSelect={select} drawing={drawing} onDrawFinish={finishDraw} onDrawCancel={() => setDrawing(false)} />
-              <div className="map-foot">
-                <span>
-                  {selectedId ? `Tap another numbered ${unit} to switch.` : `Tap a numbered ${unit} to begin.`}{" "}
-                  {unit === "field" ? "Faint circles are other pivots, not analysed." : "Each plot is a 300 m block of farmland: a neighbourhood of small fields."} The dashed box is the pilot area.
-                </span>
-                {!drawing && region.atlas && (
-                  <button className="btn" onClick={() => setDrawing(true)}>
-                    Draw my own field
-                  </button>
-                )}
-              </div>
-              <div className="field-picker" role="group" aria-label={`Choose a ${unit} by number`}>
-                <span>Or pick by number:</span>
-                {[...region.fields.features, ...customFields].map((f) => {
-                  const p = f.properties as Dict;
-                  return (
-                    <button key={p.field_id} className={p.field_id === selectedId ? "on" : ""} aria-pressed={p.field_id === selectedId} title={p.name} onClick={() => select(p.field_id)}>
-                      {p.is_custom ? "★" : fieldNumber(p.field_id)}
-                    </button>
-                  );
-                })}
-              </div>
-              {notice && <p className="notice" role="status">{notice}</p>}
-              {error && <p className="notice notice-error" role="alert">{error}</p>}
-            </div>
-            <div className="stage-side">
-              {!feature ? (
-                <section className="block intro">
-                  <p className="eyebrow">{region.region.name}</p>
-                  <h2>Start with a {unit}</h2>
-                  <p>{region.region.tagline}.</p>
-                  <p>
-                    Pick one of the {region.fields.features.length} numbered {unit}s on the map, or draw your own inside the dashed box. You will see how it has been farmed, what the weather, water, soil and satellite record say about
-                    it, and how {Object.keys(region.kb.strategies).length + (region.kb.settings.existing === "from_history" ? 1 : 0)} rotations compare under the priorities you set.
-                  </p>
-                  <ul className="plain">
-                    <li>What you grow now is always one of them, so you can see what changes.</li>
-                    <li>Every score opens to show the numbers and sources behind it.</li>
-                    <li>Every rotation lists what the tool does not know and what to check locally.</li>
-                  </ul>
-                  {pending.length > 0 && (
-                    <p className="notice">
-                      {pending.map((p) => p.title).join(", ")} could not be loaded yet.{" "}
-                      <button className="link-btn" onClick={() => setModal("sources")}>
-                        See what is needed
-                      </button>
-                    </p>
-                  )}
-                </section>
-              ) : (
-                <FieldSummary feature={feature} evidence={field?.evidence ?? null} region={region} onEvidence={showEvidence} onShowSources={() => setModal("sources")} />
-              )}
-            </div>
-          </section>
-
-          {feature && (
-            <section className="decide">
-              <Priorities region={region} weights={weights} constraints={constraints} scenario={scenario} result={result} existingId={existingId} onWeights={setWeights} onConstraints={setConstraints} onScenario={setScenario}
-                onExisting={setExistingId} onReset={reset} />
-              {result ? (
-                <Strategies result={result} region={region} onEvidence={showEvidence} />
-              ) : (
-                <section className="block strategies">
-                  <div className="loader" aria-hidden="true" />
-                  <p>Reading thirty years of weather for this {unit}…</p>
-                </section>
-              )}
-            </section>
-          )}
-          {feature && field && <Evidence ev={field.evidence} region={region} panel={panel} onPanel={setPanel} />}
-        </main>
-      )}
+      <Workspace key={regionId} info={regions.find((r) => r.id === regionId)} onRegion={setLoaded} onModal={setModal} />
       <Footer />
       {modals}
     </div>
-  );
-}
-
-function Footer() {
-  return (
-    <footer className="footer">
-      <p>
-        Built for the 2026 NASA Space Apps Challenge, “Field Shift: Adapting Farms with NASA Data”. Data: NASA POWER, GPM IMERG, SMAP, Landsat, MODIS, SRTM and GRACE; USDA NRCS and NASS; USGS; OpenET; gridMET; India Meteorological
-        Department; ISRIC SoilGrids; FAO WaPOR; ESA WorldCover. NASA does not endorse this tool. The rotation libraries have not been reviewed by a local agronomist.
-      </p>
-    </footer>
   );
 }
